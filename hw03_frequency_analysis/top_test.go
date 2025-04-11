@@ -3,16 +3,28 @@ package hw03frequencyanalysis
 import (
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTop10(t *testing.T) {
-	t.Run("no words in empty string", func(t *testing.T) {
-		require.Len(t, Top10(""), 0)
+	var flag bool
+
+	flag = t.Run("no words in empty string", func(t *testing.T) {
+		assert.Len(t, Top("", false), 0)
 	})
 
-	t.Run("positive test", func(t *testing.T) {
-		require.Equal(t, TestExpected, Top(Text, false))
-		require.Equal(t, TestAsteriskExpected, Top(Text, true))
+	flag = flag && t.Run("no words in empty string asterisk", func(t *testing.T) {
+		assert.Len(t, Top("", true), 0)
 	})
+
+	flag = flag && t.Run("positive test", func(t *testing.T) {
+		assert.Equal(t, TestExpected, Top(Text, false))
+	})
+	flag = flag && t.Run("positive test asterisk", func(t *testing.T) {
+		assert.Equal(t, TestAsteriskExpected, Top(Text, true))
+	})
+
+	if !flag {
+		t.FailNow()
+	}
 }
