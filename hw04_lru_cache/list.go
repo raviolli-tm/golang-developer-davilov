@@ -71,12 +71,12 @@ func (l *list) Remove(i *ListItem) {
 	case i.Prev == nil && i.Next == nil:
 		l.head = nil
 		l.tail = nil
-	case i.Prev != nil:
-		l.head = i.Next
-		l.head.Prev = nil
-	case i.Next != nil:
+	case i.Prev != nil && i.Next == nil:
 		l.tail = i.Prev
 		l.tail.Next = nil
+	case i.Next != nil && i.Prev == nil:
+		l.head = i.Next
+		l.head.Prev = nil
 	default:
 		i.Prev.Next, i.Next.Prev = i.Next, i.Prev
 	}
