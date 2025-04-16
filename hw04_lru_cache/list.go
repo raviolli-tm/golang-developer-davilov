@@ -25,12 +25,15 @@ type list struct {
 func (l *list) Len() int {
 	return l.len
 }
+
 func (l *list) Front() *ListItem {
 	return l.head
 }
+
 func (l *list) Back() *ListItem {
 	return l.tail
 }
+
 func (l *list) PushFront(v interface{}) *ListItem {
 	l.len++
 	a := new(ListItem)
@@ -46,6 +49,7 @@ func (l *list) PushFront(v interface{}) *ListItem {
 	l.head = a
 	return a
 }
+
 func (l *list) PushBack(v interface{}) *ListItem {
 	l.len++
 	a := new(ListItem)
@@ -60,18 +64,20 @@ func (l *list) PushBack(v interface{}) *ListItem {
 	l.tail = a
 	return a
 }
+
 func (l *list) Remove(i *ListItem) {
 	l.len--
-	if i.Prev == nil && i.Next == nil {
+	switch {
+	case i.Prev == nil && i.Next == nil:
 		l.head = nil
 		l.tail = nil
-	} else if i.Prev == nil {
+	case i.Prev != nil:
 		l.head = i.Next
 		l.head.Prev = nil
-	} else if i.Next == nil {
+	case i.Next != nil:
 		l.tail = i.Prev
 		l.tail.Next = nil
-	} else {
+	default:
 		i.Prev.Next, i.Next.Prev = i.Next, i.Prev
 	}
 }
@@ -90,7 +96,6 @@ func (l *list) MoveToFront(i *ListItem) {
 	l.head.Prev = i
 	i.Prev = nil
 	l.head = i
-
 }
 
 func NewList() List {
