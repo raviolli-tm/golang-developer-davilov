@@ -6,8 +6,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func check(testList List, expected []int, t *testing.T) {
-
+func check(t *testing.T, testList List, expected []int) {
+	t.Helper()
 	i := testList.Front()
 	for j := 0; j < testList.Len(); j++ {
 		i = i.Next
@@ -43,25 +43,23 @@ func TestList(t *testing.T) {
 	})
 
 	t.Run("complex", func(t *testing.T) {
-
 		testList.PushFront(10)
 		testList.PushBack(20)
-		check(testList, []int{10, 20}, t)
+		check(t, testList, []int{10, 20})
 		testList.PushBack(30)
 
 		require.Equal(t, 3, testList.Len())
 
-		check(testList, []int{10, 20, 30}, t)
+		check(t, testList, []int{10, 20, 30})
 	})
 
 	t.Run("remove", func(t *testing.T) {
-		//кейс удаления всех элементов
 		middle := testList.Front().Next
 		testList.Remove(middle)
-		check(testList, []int{10, 30}, t)
+		check(t, testList, []int{10, 30})
 		testList.Remove(testList.Front())
 		testList.Remove(testList.Front())
-		check(testList, []int{}, t)
+		check(t, testList, []int{})
 		require.Equal(t, 0, testList.Len())
 		require.Nil(t, testList.Back())
 		require.Nil(t, testList.Front())
@@ -82,12 +80,11 @@ func TestList(t *testing.T) {
 		a := testList.Back()
 		testList.MoveToFront(a)
 		testList.MoveToFront(a)
-		check(testList, []int{70, 80, 60, 40, 50}, t)
+		check(t, testList, []int{70, 80, 60, 40, 50})
 		require.Equal(t, 5, testList.Len())
 		a = testList.Back().Prev
 		testList.MoveToFront(a)
-		check(testList, []int{40, 70, 80, 60, 50}, t)
+		check(t, testList, []int{40, 70, 80, 60, 50})
 		require.Equal(t, 5, testList.Len())
-
 	})
 }
