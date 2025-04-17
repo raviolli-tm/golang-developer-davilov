@@ -1,6 +1,7 @@
 package hw03frequencyanalysis
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -17,15 +18,15 @@ func Top(x string, taskWithAsteriskIsCompleted bool) []string {
 	return Top10Asterisk(x)
 }
 
-func Top10(x string) []string {
-	stringsArr := strings.Fields(x)
+func Top10StringArr(stringsArr []string) []string {
 	if len(stringsArr) == 0 {
 		return []string{}
 	}
-	sort.Strings(stringsArr)
 
+	sort.Strings(stringsArr)
 	topFrequencies := make([]Pair, 0)
 	start := 0
+
 	for i := 0; i < len(stringsArr); i++ {
 		if stringsArr[start] != stringsArr[i] {
 			topFrequencies = append(topFrequencies, Pair{stringsArr[start], i - start})
@@ -48,6 +49,16 @@ func Top10(x string) []string {
 	return result[:10]
 }
 
-func Top10Asterisk(_ string) []string {
-	return []string{}
+func Top10(x string) []string {
+	stringsArr := strings.Fields(x)
+
+	return Top10StringArr(stringsArr)
+}
+
+func Top10Asterisk(s string) []string {
+	s = strings.ToLower(s)
+	reg := regexp.MustCompile("[а-яА-Я0-9.,!?-]*[а-яА-Я0-9]|-*-]")
+	stringsArr := reg.FindAllString(s, -1)
+
+	return Top10StringArr(stringsArr)
 }
