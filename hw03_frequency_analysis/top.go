@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+var reg = regexp.MustCompile("[а-яА-Я0-9.,!?-]*[а-яА-Я0-9]|-*-]")
+
 type Pair struct {
 	Key   string
 	Value int
@@ -57,7 +59,6 @@ func Top10(x string) []string {
 
 func Top10Asterisk(s string) []string {
 	s = strings.ToLower(s)
-	reg := regexp.MustCompile("[а-яА-Я0-9.,!?-]*[а-яА-Я0-9]|-*-]")
 	stringsArr := reg.FindAllString(s, -1)
 
 	return Top10StringArr(stringsArr)
