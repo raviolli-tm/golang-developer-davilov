@@ -9,13 +9,11 @@ type (
 type Stage func(in In) (out Out)
 
 func ExecutePipeline2(in In, done In, stages ...Stage) Out {
-
 	if len(stages) == 1 {
 		return stages[0](in)
 	}
 
 	return ExecutePipeline2(stages[0](in), done, stages[1:]...)
-
 }
 
 func ExecutePipeline(in In, done In, stages ...Stage) Out {
@@ -34,11 +32,9 @@ func ExecutePipeline(in In, done In, stages ...Stage) Out {
 				preparedOut <- v
 			case <-done:
 				return
-
 			}
 		}
 	}(channel, preparedOut)
 
 	return preparedOut
-
 }
