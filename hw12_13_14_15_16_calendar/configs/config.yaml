@@ -1,0 +1,11 @@
+logger:
+  level: "INFO"
+
+postgres:
+  host: "localhost"
+  port: 5432
+  database: "postgres_db"
+  username: "postgres_user"
+  password: "postgres_password"
+  schema: "calendar"
+
