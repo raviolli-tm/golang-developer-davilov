@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"flag"
+	memorystorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,10 +13,8 @@ import (
 	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/logger"
 	internalhttp "github.com/davilov/hw12_13_14_15_calendar/internal/server/http"
-	memorystorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/memory"
 )
 
-var Logg *logger.Logger
 var configFile string
 
 func init() {
@@ -30,12 +30,20 @@ func main() {
 	}
 
 	config := NewConfig()
-	Logg = logger.New(config.Logger.Level)
+	logg := logger.New(config.Logger)
+	var storage app.Storage
+	switch config.StorageType {
+	case "postgres":
+		storage = sqlstorage.New(config.Database)
+	case "in-memory":
+		storage = memorystorage.New()
+	default:
+		storage = memorystorage.New()
+	}
 
-	storage := memorystorage.New()
-	calendar := app.New(Logg, storage)
+	calendar := app.New(logg, storage)
 
-	server := internalhttp.NewServer(Logg, calendar)
+	server := internalhttp.NewServer(logg, calendar)
 
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
@@ -48,14 +56,14 @@ func main() {
 		defer cancel()
 
 		if err := server.Stop(ctx); err != nil {
-			Logg.Error("failed to stop http server: " + err.Error())
+			logg.Error("failed to stop http server: " + err.Error())
 		}
 	}()
 
-	Logg.Info("calendar is running...")
+	logg.Info("calendar is running...")
 
 	if err := server.Start(ctx); err != nil {
-		Logg.Error("failed to start http server: " + err.Error())
+		logg.Error("failed to start http server: " + err.Error())
 		cancel()
 		os.Exit(1) //nolint:gocritic
 	}
