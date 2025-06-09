@@ -34,7 +34,7 @@ func (e *Event) Validate() error {
 		errstrings = append(errstrings, appErrors.ErrDateEndIsNotSet.Error())
 	}
 
-	if e.DateStart.Before(e.DateEnd) {
+	if e.DateStart.After(e.DateEnd) {
 		errstrings = append(errstrings, appErrors.ErrDateStartBelowDateEnd.Error())
 	}
 

@@ -30,12 +30,14 @@ func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event) error {
 	if !ok {
 		return appErrors.ErrIdDoesNotExist
 	}
+	e.ID = id
 	s.data[id] = e
 
 	return nil
 }
 
 func (s *Storage) ReadEvents() ([]storage.Event, error) {
+
 	result := make([]storage.Event, 0)
 	s.mu.RLock()
 	for _, event := range s.data {
@@ -70,5 +72,3 @@ func (s *Storage) CreateEvent(e storage.Event) error {
 	return nil
 
 }
-
-// TODO
