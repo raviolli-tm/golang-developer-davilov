@@ -1,14 +1,26 @@
 BIN := "./bin/calendar"
 DOCKER_IMG="calendar:develop"
+APP_NAME="calendar-image"
 
 GIT_HASH := $(shell git log --format="%h" -n 1)
 LDFLAGS := -X main.release="develop" -X main.buildDate=$(shell date -u +%Y-%m-%dT%H:%M:%S) -X main.gitHash=$(GIT_HASH)
+
+generate:
+	docker run --rm -v ${PWD}:/local openapitools/openapi-generator-cli generate \
+      -i /local/api/swagger.yaml \
+      -g go-server \
+      -o /local/api \
+      -c /local/api/s.json \
+		  --additional-properties=packageName=api,outputAsLibrary=true \
+
+
+
 
 build:
 	go build -v -o $(BIN) -ldflags "$(LDFLAGS)" ./cmd/calendar
 
 run: build
-	$(BIN) -config ./configs/config.toml
+	$(BIN) -config ./configs/config.yaml
 
 build-img:
 	docker build \
@@ -17,7 +29,13 @@ build-img:
 		-f build/Dockerfile .
 
 run-img: build-img
-	docker run $(DOCKER_IMG)
+	@echo "Остановка и удаление старого контейнера (если существует)..."
+	-docker stop $(APP_NAME) 2>/dev/null || true
+	-docker rm $(APP_NAME) 2>/dev/null || true
+
+	@echo "Запуск нового контейнера..."
+	docker run -d --name $(APP_NAME) -p 8080:8080 $(DOCKER_IMG)
+
 
 version: build
 	$(BIN) version

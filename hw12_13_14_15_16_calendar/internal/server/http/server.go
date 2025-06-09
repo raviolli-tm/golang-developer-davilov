@@ -2,6 +2,9 @@ package internalhttp
 
 import (
 	"context"
+	genApi "github.com/davilov/hw12_13_14_15_calendar/api/go"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/server/api"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	"github.com/google/uuid"
 	"net/http"
 	"time"
@@ -21,7 +24,10 @@ type Logger interface {
 }
 
 type Application interface {
-	CreateEvent(ctx context.Context, id uuid.UUID, title string) error
+	CreateEvent(context.Context, storage.Event) error
+	ReadEvents(ctx context.Context) ([]storage.Event, error)
+	DeleteEvent(context.Context, uuid.UUID) error
+	UpdateEvent(context.Context, uuid.UUID, storage.Event) error
 }
 
 func NewServer(logger Logger, app Application) *Server {
@@ -30,13 +36,21 @@ func NewServer(logger Logger, app Application) *Server {
 
 func (s *Server) Start(ctx context.Context) error {
 	s.ctx = ctx
+
 	handler := http.NewServeMux()
-	handler.Handle("/", loggingMiddleware(s.homeHandler, s.Logger))
-	handler.Handle("/hello-world", loggingMiddleware(s.helloWorld, s.Logger))
+	handler.HandleFunc("/", s.homeHandler)
+	handler.HandleFunc("/hello-world", s.helloWorld)
+
+	calendarApi := api.NewEventAPIService(s.Application)
+	controllerEvent := genApi.NewCalendarEventsAPIController(calendarApi)
+
+	muxRouter := genApi.NewRouter(controllerEvent)
+
+	handler.Handle("/events", muxRouter)
 
 	server := &http.Server{
 		Addr:         ":8080",
-		Handler:      handler,
+		Handler:      loggingMiddleware(handler, s.Logger),
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}

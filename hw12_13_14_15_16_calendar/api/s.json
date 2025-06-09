@@ -1,0 +1,8 @@
+{
+  "typeMappings": {
+    "uuid.UUID": "github.com/google/uuid.UUID"
+  },
+  "importMappings": {
+    "uuid.UUID": "github.com/google/uuid"
+  }
+}
