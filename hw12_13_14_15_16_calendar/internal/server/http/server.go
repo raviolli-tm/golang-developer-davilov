@@ -3,34 +3,19 @@ package internalhttp
 import (
 	"context"
 	genApi "github.com/davilov/hw12_13_14_15_calendar/api/go"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/server/api"
-	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
-	"github.com/google/uuid"
 	"net/http"
 	"time"
 )
 
 type Server struct {
-	Logger      Logger
-	Application Application
+	Logger      app.Logger
+	Application api.Application
 	ctx         context.Context
 }
 
-type Logger interface {
-	Warn(msg string)
-	Info(msg string)
-	Debug(msg string)
-	Error(msg string)
-}
-
-type Application interface {
-	CreateEvent(context.Context, storage.Event) error
-	ReadEvents(ctx context.Context) ([]storage.Event, error)
-	DeleteEvent(context.Context, uuid.UUID) error
-	UpdateEvent(context.Context, uuid.UUID, storage.Event) error
-}
-
-func NewServer(logger Logger, app Application) *Server {
+func NewServer(logger app.Logger, app api.Application) *Server {
 	return &Server{Logger: logger, Application: app}
 }
 
@@ -67,6 +52,7 @@ func (s *Server) Start(ctx context.Context) error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
+	<-ctx.Done()
 	return nil
 }
 

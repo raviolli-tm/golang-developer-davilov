@@ -2,6 +2,7 @@ package internalhttp
 
 import (
 	"fmt"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
 	"net/http"
 	"time"
 )
@@ -16,7 +17,7 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.ResponseWriter.WriteHeader(code)
 }
 
-func loggingMiddleware(next http.Handler, logger Logger) http.HandlerFunc { //nolint:unused
+func loggingMiddleware(next http.Handler, logger app.Logger) http.HandlerFunc { //nolint:unused
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}

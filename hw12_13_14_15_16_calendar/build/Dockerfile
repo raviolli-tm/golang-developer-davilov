@@ -1,5 +1,5 @@
 # Собираем в гошке
-FROM golang:1.18 as build
+FROM golang:1.23 as build
 
 ENV BIN_FILE /opt/calendar/calendar-app
 ENV CODE_DIR /go/src/
@@ -18,7 +18,7 @@ COPY . ${CODE_DIR}
 ARG LDFLAGS
 RUN CGO_ENABLED=0 go build \
         -ldflags "$LDFLAGS" \
-        -o ${BIN_FILE} ./cmd/calendar
+        -o ${BIN_FILE}  ./cmd/calendar
 
 # На выходе тонкий образ
 FROM alpine:3.9

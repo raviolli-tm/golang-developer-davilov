@@ -1,6 +1,8 @@
 module github.com/davilov/hw12_13_14_15_calendar
 
-go 1.23.10
+go 1.23.0
+
+toolchain go1.23.10
 
 require (
 	github.com/google/uuid v1.6.0

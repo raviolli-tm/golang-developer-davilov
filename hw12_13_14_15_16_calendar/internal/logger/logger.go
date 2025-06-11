@@ -67,7 +67,7 @@ func New(loggerConf LogConf) *Logger {
 }
 
 const dateFormat string = "01-02-2006 15:04:05.000"
-const format string = "%s [%s] %s"
+const format string = "%s [%s] %s \n"
 
 func (l *Logger) Warn(msg string) {
 	currentTime := time.Now().Format(dateFormat)

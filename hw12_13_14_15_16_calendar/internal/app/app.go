@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	internalhttp "github.com/davilov/hw12_13_14_15_calendar/internal/server/http"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	"github.com/google/uuid"
 )
@@ -14,7 +13,10 @@ type App struct {
 }
 
 type Logger interface {
-	internalhttp.Logger
+	Warn(msg string)
+	Info(msg string)
+	Debug(msg string)
+	Error(msg string)
 }
 
 type Storage interface {

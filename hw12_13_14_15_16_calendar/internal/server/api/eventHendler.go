@@ -3,16 +3,21 @@ package api
 import (
 	"context"
 	api "github.com/davilov/hw12_13_14_15_calendar/api/go"
-	internalhttp "github.com/davilov/hw12_13_14_15_calendar/internal/server/http"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	"github.com/google/uuid"
 )
 
+type Application interface {
+	CreateEvent(context.Context, storage.Event) error
+	ReadEvents(ctx context.Context) ([]storage.Event, error)
+	DeleteEvent(context.Context, uuid.UUID) error
+	UpdateEvent(context.Context, uuid.UUID, storage.Event) error
+}
 type EventAPIService struct {
-	App internalhttp.Application
+	App Application
 }
 
-func NewEventAPIService(app internalhttp.Application) *EventAPIService {
+func NewEventAPIService(app Application) *EventAPIService {
 	return &EventAPIService{App: app}
 }
 
