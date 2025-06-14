@@ -32,9 +32,13 @@ func main() {
 	config := NewConfig()
 	logg := logger.New(config.Logger)
 	var storage app.Storage
+
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
 	switch config.StorageType {
 	case "postgres":
-		storage = sqlstorage.New(config.Database)
+		storage = sqlstorage.New(config.Database, ctx)
 	case "in-memory":
 		storage = memorystorage.New()
 	default:
@@ -45,8 +49,6 @@ func main() {
 
 	server := internalhttp.NewServer(logg, calendar)
 
-	ctx, cancel := signal.NotifyContext(context.Background(),
-		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
 	go func() {

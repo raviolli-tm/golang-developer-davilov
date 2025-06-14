@@ -143,27 +143,27 @@ components:
         import: "github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 
       properties:
-        ID:
+        event_id:
           type: string
           format: uuid
           example: "550e8400-e29b-41d4-a716-446655440000"
-        Title:
+        title:
           type: string
           example: "Стартовая встреча"
-        DateStart:
+        date_start:
           type: string
           format: date-time
-        DateEnd:
+        date_end:
           type: string
           format: date-time
-        Description:
+        description:
           type: string
           example: "Стартовая встреча для делового совещания"
-        UserId:
+        user_id:
           type: integer
           format: int32
           example: 123456
-        EventNotifyTime:
+        event_notify_time:
           type: integer
           format: int32
           example: 15

@@ -141,36 +141,36 @@ components:
   schemas:
     Event:
       example:
-        DateEnd: 2000-01-23T04:56:07.000+00:00
-        Description: Стартовая встреча для делового совещания
-        UserId: 123456
-        DateStart: 2000-01-23T04:56:07.000+00:00
-        EventNotifyTime: 15
-        Title: Стартовая встреча
-        ID: 550e8400-e29b-41d4-a716-446655440000
+        date_start: 2000-01-23T04:56:07.000+00:00
+        event_id: 550e8400-e29b-41d4-a716-446655440000
+        user_id: 123456
+        event_notify_time: 15
+        description: Стартовая встреча для делового совещания
+        date_end: 2000-01-23T04:56:07.000+00:00
+        title: Стартовая встреча
       format: event
       properties:
-        ID:
+        event_id:
           example: 550e8400-e29b-41d4-a716-446655440000
           format: uuid
           type: string
-        Title:
+        title:
           example: Стартовая встреча
           type: string
-        DateStart:
+        date_start:
           format: date-time
           type: string
-        DateEnd:
+        date_end:
           format: date-time
           type: string
-        Description:
+        description:
           example: Стартовая встреча для делового совещания
           type: string
-        UserId:
+        user_id:
           example: 123456
           format: int32
           type: integer
-        EventNotifyTime:
+        event_notify_time:
           example: 15
           format: int32
           type: integer

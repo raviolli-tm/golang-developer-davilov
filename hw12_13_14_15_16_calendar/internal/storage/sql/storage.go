@@ -24,11 +24,16 @@ type Storage struct {
 	db     *sql.DB
 	mu     sync.Mutex
 	config DatabaseConf
-	ctx    context.Context
 }
 
-func New(conf DatabaseConf) *Storage {
-	return &Storage{config: conf, mu: sync.Mutex{}}
+func New(conf DatabaseConf, ctx context.Context) *Storage {
+	strg := Storage{config: conf, mu: sync.Mutex{}}
+	err := strg.Connect(ctx)
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+	return &strg
 }
 
 func (s *Storage) Connect(ctx context.Context) error {
@@ -40,13 +45,12 @@ func (s *Storage) Connect(ctx context.Context) error {
 	}
 
 	var err error
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s currentSchema=%s",
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s",
 		s.config.Host,
 		s.config.Port,
 		s.config.Username,
 		s.config.Password,
-		s.config.Database,
-		s.config.Schema)
+		s.config.Database)
 	s.db, err = sql.Open("pgx", dsn) // *sql.DB
 	if err != nil {
 		return fmt.Errorf("failed to load driver: %w", err)
@@ -57,7 +61,6 @@ func (s *Storage) Connect(ctx context.Context) error {
 		_ = s.db.Close()
 		return fmt.Errorf("failed to connect to db: %w", err)
 	}
-	s.ctx = ctx
 	return nil
 }
 
@@ -89,16 +92,16 @@ func (s *Storage) Close(ctx context.Context) error {
 	}
 }
 
-func (s *Storage) CreateEvent(e storage.Event) error {
+func (s *Storage) CreateEvent(e storage.Event, ctx context.Context) error {
 
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
+	tx, err := s.db.BeginTx(ctx, nil) // *sql.Tx
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer tx.Rollback()
 
 	query := `INSERT INTO calendar.calendar_event (title, date_start, date_end, event_description, user_id, event_notify_time) VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err = tx.ExecContext(s.ctx, query,
+	_, err = tx.ExecContext(ctx, query,
 		e.Title,
 		e.DateStart,
 		e.DateEnd,
@@ -115,9 +118,9 @@ func (s *Storage) CreateEvent(e storage.Event) error {
 	}
 	return nil
 }
-func (s *Storage) ReadEvents() ([]storage.Event, error) {
+func (s *Storage) ReadEvents(ctx context.Context) ([]storage.Event, error) {
 
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
+	tx, err := s.db.BeginTx(ctx, nil) // *sql.Tx
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -125,16 +128,11 @@ func (s *Storage) ReadEvents() ([]storage.Event, error) {
 
 	query := `select event_id, title, date_start, date_end, event_description, user_id, event_notify_time from calendar.calendar_event`
 
-	rows, err := tx.QueryContext(s.ctx, query)
+	rows, err := tx.QueryContext(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read events: %w", err)
 	}
 	defer rows.Close()
-
-	err = tx.Commit() // или tx.Rollback()
-	if err != nil {
-		err = fmt.Errorf("failed to commit transaction: %w", err)
-	}
 
 	result := make([]storage.Event, 0)
 	for rows.Next() {
@@ -150,21 +148,28 @@ func (s *Storage) ReadEvents() ([]storage.Event, error) {
 		}
 		result = append(result, event)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to read events: %w", err)
 	}
+
+	err = tx.Commit()
+	if err != nil {
+		err = fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
 	return result, nil
 }
-func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event) error {
+func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) error {
 
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
+	tx, err := s.db.BeginTx(ctx, nil) // *sql.Tx
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer tx.Rollback()
 
 	query := `update calendar.calendar_event set title = $1, date_start = $2, date_end = $3, event_description = $4, user_id = $5, event_notify_time = $6 where event_id = $7`
-	_, err = tx.ExecContext(s.ctx, query,
+	_, err = tx.ExecContext(ctx, query,
 		e.Title,
 		e.DateStart,
 		e.DateEnd,
@@ -184,15 +189,15 @@ func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event) error {
 	return nil
 
 }
-func (s *Storage) DeleteEvent(id uuid.UUID) error {
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
+func (s *Storage) DeleteEvent(id uuid.UUID, ctx context.Context) error {
+	tx, err := s.db.BeginTx(ctx, nil) // *sql.Tx
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer tx.Rollback()
 
 	query := `delete from calendar.calendar_event where event_id = $1`
-	_, err = tx.ExecContext(s.ctx, query,
+	_, err = tx.ExecContext(ctx, query,
 		id.String())
 	if err != nil {
 		return fmt.Errorf("failed to delete event: %w", err)

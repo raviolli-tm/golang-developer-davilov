@@ -20,10 +20,10 @@ type Logger interface {
 }
 
 type Storage interface {
-	CreateEvent(e storage.Event) error
-	ReadEvents() ([]storage.Event, error)
-	UpdateEvent(id uuid.UUID, e storage.Event) error
-	DeleteEvent(id uuid.UUID) error
+	CreateEvent(e storage.Event, ctx context.Context) error
+	ReadEvents(ctx context.Context) ([]storage.Event, error)
+	UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) error
+	DeleteEvent(id uuid.UUID, ctx context.Context) error
 }
 
 func New(logger Logger, storage Storage) *App {
@@ -32,7 +32,7 @@ func New(logger Logger, storage Storage) *App {
 
 func (a *App) CreateEvent(ctx context.Context, event storage.Event) error {
 
-	err := a.storage.CreateEvent(event)
+	err := a.storage.CreateEvent(event, ctx)
 	if err != nil {
 		return fmt.Errorf("create event: %w", err)
 	}
@@ -41,7 +41,7 @@ func (a *App) CreateEvent(ctx context.Context, event storage.Event) error {
 
 func (a *App) ReadEvents(ctx context.Context) ([]storage.Event, error) {
 
-	events, err := a.storage.ReadEvents()
+	events, err := a.storage.ReadEvents(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get events: %w", err)
 	}
@@ -49,7 +49,7 @@ func (a *App) ReadEvents(ctx context.Context) ([]storage.Event, error) {
 }
 func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event) error {
 
-	err := a.storage.UpdateEvent(id, event)
+	err := a.storage.UpdateEvent(id, event, ctx)
 	if err != nil {
 		return fmt.Errorf("update event: %w", err)
 	}
@@ -57,7 +57,7 @@ func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event
 }
 func (a *App) DeleteEvent(ctx context.Context, id uuid.UUID) error {
 
-	err := a.storage.DeleteEvent(id)
+	err := a.storage.DeleteEvent(id, ctx)
 	if err != nil {
 		return fmt.Errorf("delete event: %w", err)
 	}

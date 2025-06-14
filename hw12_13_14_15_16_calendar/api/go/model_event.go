@@ -15,19 +15,19 @@ import (
 )
 
 type Event struct {
-	ID string `json:"ID,omitempty"`
+	EventId string `json:"event_id,omitempty"`
 
-	Title string `json:"Title,omitempty"`
+	Title string `json:"title,omitempty"`
 
-	DateStart time.Time `json:"DateStart,omitempty"`
+	DateStart time.Time `json:"date_start,omitempty"`
 
-	DateEnd time.Time `json:"DateEnd,omitempty"`
+	DateEnd time.Time `json:"date_end,omitempty"`
 
-	Description string `json:"Description,omitempty"`
+	Description string `json:"description,omitempty"`
 
-	UserId int32 `json:"UserId,omitempty"`
+	UserId int32 `json:"user_id,omitempty"`
 
-	EventNotifyTime int32 `json:"EventNotifyTime,omitempty"`
+	EventNotifyTime int32 `json:"event_notify_time,omitempty"`
 }
 
 // AssertEventRequired checks if the required fields are not zero-ed

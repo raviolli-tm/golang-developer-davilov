@@ -9,13 +9,13 @@ import (
 )
 
 type Event struct {
-	ID              uuid.UUID
-	Title           string
-	DateStart       time.Time
-	DateEnd         time.Time
-	Description     string
-	UserId          int
-	EventNotifyTime int
+	ID              uuid.UUID `json:"event_id"`
+	Title           string    `json:"title"`
+	DateStart       time.Time `json:"date_start"`
+	DateEnd         time.Time `json:"date_end"`
+	Description     string    `json:"description"`
+	UserId          int       `json:"user_id"`
+	EventNotifyTime int       `json:"event_notify_time"`
 	// TODO
 }
 

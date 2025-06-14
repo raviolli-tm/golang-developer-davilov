@@ -23,7 +23,7 @@ func (s *Server) Start(ctx context.Context) error {
 	s.ctx = ctx
 
 	handler := http.NewServeMux()
-	handler.HandleFunc("/", s.homeHandler)
+
 	handler.HandleFunc("/hello-world", s.helloWorld)
 
 	calendarApi := api.NewEventAPIService(s.Application)
@@ -31,7 +31,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	muxRouter := genApi.NewRouter(controllerEvent)
 
-	handler.Handle("/events", muxRouter)
+	handler.Handle("/", muxRouter)
 
 	server := &http.Server{
 		Addr:         ":8080",

@@ -1,6 +1,7 @@
 package memorystorage
 
 import (
+	"context"
 	"github.com/davilov/hw12_13_14_15_calendar/appErrors"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ func New() *Storage {
 	return &Storage{mu: sync.RWMutex{}, data: make(map[uuid.UUID]storage.Event), idx: uuid.New()}
 }
 
-func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event) error {
+func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) error {
 
 	err := e.Validate()
 	if err != nil {
@@ -36,7 +37,7 @@ func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event) error {
 	return nil
 }
 
-func (s *Storage) ReadEvents() ([]storage.Event, error) {
+func (s *Storage) ReadEvents(context.Context) ([]storage.Event, error) {
 
 	result := make([]storage.Event, 0)
 	s.mu.RLock()
@@ -47,7 +48,7 @@ func (s *Storage) ReadEvents() ([]storage.Event, error) {
 	return result, nil
 }
 
-func (s *Storage) DeleteEvent(id uuid.UUID) error {
+func (s *Storage) DeleteEvent(id uuid.UUID, ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, ok := s.data[id]
@@ -58,7 +59,7 @@ func (s *Storage) DeleteEvent(id uuid.UUID) error {
 	return nil
 }
 
-func (s *Storage) CreateEvent(e storage.Event) error {
+func (s *Storage) CreateEvent(e storage.Event, ctx context.Context) error {
 	err := e.Validate()
 	if err != nil {
 		return err

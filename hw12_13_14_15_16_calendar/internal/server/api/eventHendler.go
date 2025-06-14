@@ -62,7 +62,7 @@ func (s *EventAPIService) DeleteCalendarEventById(ctx context.Context, id string
 
 func (s *EventAPIService) StorageEventToApiEvent(event storage.Event) api.Event {
 	resultEvent := api.Event{}
-	resultEvent.ID = event.ID.String()
+	resultEvent.EventId = event.ID.String()
 	resultEvent.Title = event.Title
 	resultEvent.UserId = int32(event.UserId)
 	resultEvent.DateStart = event.DateStart
@@ -77,7 +77,7 @@ func (s *EventAPIService) StorageEventToApiEvent(event storage.Event) api.Event 
 func (s *EventAPIService) ApiEventToStorageEvent(event api.Event) storage.Event {
 
 	resultEvent := storage.Event{}
-	resultEvent.ID, _ = uuid.Parse(event.ID)
+	resultEvent.ID, _ = uuid.Parse(event.EventId)
 	resultEvent.Title = event.Title
 	resultEvent.UserId = int(event.UserId)
 	resultEvent.DateStart = event.DateStart
