@@ -16,7 +16,6 @@ var (
 )
 
 func Copy(fromPath, toPath string, offset, limit int64) error {
-
 	if fromPath == "" || toPath == "" {
 		return ErrFilePathIsRequired
 	}
