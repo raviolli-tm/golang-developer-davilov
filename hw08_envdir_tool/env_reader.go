@@ -2,8 +2,10 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"unicode"
 )
@@ -24,10 +26,12 @@ func ReadDir(dir string) (Environment, error) {
 	envVars := make(Environment)
 
 	for _, fileInfo := range dirInfo {
-		file, err := os.OpenFile(dir+"/"+fileInfo.Name(), os.O_RDONLY, 0666)
+		file, err := os.Open(
+			filepath.Join(dir, fileInfo.Name()))
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error opening file %s : %w", fileInfo.Name(), err)
 		}
+
 		fileEnv := EnvValue{"", false}
 		all, err := io.ReadAll(file)
 		if err != nil {
@@ -43,7 +47,7 @@ func ReadDir(dir string) (Environment, error) {
 			}
 			all = bytes.ReplaceAll(all, []byte{0}, []byte{10})
 			fileEnv.Value = string(all)
-			fileEnv.Value = strings.TrimRightFunc(fileEnv.Value, func(r rune) bool { return unicode.IsSpace(r) })
+			fileEnv.Value = strings.TrimRightFunc(fileEnv.Value, unicode.IsSpace)
 		}
 
 		envVars[fileInfo.Name()] = fileEnv

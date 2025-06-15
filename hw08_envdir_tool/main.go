@@ -10,9 +10,7 @@ func main() {
 
 	cmd := make([]string, 0)
 
-	for _, env := range os.Args[2:] {
-		cmd = append(cmd, env)
-	}
+	cmd = append(cmd, os.Args[2:]...)
 
 	env, err := ReadDir(envPath)
 	if err != nil {
@@ -20,5 +18,4 @@ func main() {
 		return
 	}
 	RunCmd(cmd, env)
-
 }

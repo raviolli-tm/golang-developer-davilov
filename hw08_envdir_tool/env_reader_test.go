@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"os/exec"
 	"runtime"
@@ -19,7 +18,7 @@ func runCommand(name string, arg ...string) error {
 func permissionsReset(filename string) error {
 	switch runtime.GOOS {
 	case "linux", "darwin", "freebsd", "openbsd":
-		return os.Chmod(filename, 0644)
+		return os.Chmod(filename, 0o644)
 	case "windows":
 		return runCommand("icacls", filename, "/reset")
 	default:
@@ -30,7 +29,7 @@ func permissionsReset(filename string) error {
 func permissionsNoAccess(filename string) error {
 	switch runtime.GOOS {
 	case "linux", "darwin", "freebsd", "openbsd":
-		return os.Chmod(filename, 0000)
+		return os.Chmod(filename, 0o000)
 	case "windows":
 		_ = runCommand("icacls", filename, "/reset")
 		return runCommand("icacls", filename, "/deny", "Everyone:F")
@@ -39,28 +38,39 @@ func permissionsNoAccess(filename string) error {
 	}
 }
 
-func TestReadDir(t *testing.T) {
+const (
+	testDataDir  = "./testdata/env_test" // Используйте "testdata" для тестовых данных
+	testFileName = "test_file_for_test"  // snake_case для имен файлов
+)
 
-	var dirPath = "./testData/envTest"
-	var fileName = "testFileForTestReason"
+func TestReadDir(t *testing.T) {
+	_ = os.Mkdir(testDataDir, 0o755)
+	_, err := os.Create(testDataDir + "/" + testFileName)
+	if err != nil {
+		fmt.Println("Fatal error: 3333 ", err)
+	}
 
 	t.Run("ReadDir Errors", func(t *testing.T) {
-		_, err := ReadDir("./wewswe")
-		if err != nil {
-			assert.ErrorIs(t, err, os.ErrNotExist)
-		}
+		t.Run("bad dir path", func(t *testing.T) {
+			_, err := ReadDir("./wewswe")
+			if err != nil {
+				t.Errorf("ReadDir Errors: %v", err)
+			}
+		})
 
-		createdFile, _ := os.Create(dirPath + "/" + fileName)
-		_ = createdFile.Close()
-		err = permissionsNoAccess(dirPath + "/" + fileName)
-		if err != nil {
-			fmt.Println(err)
-		}
-		_, err = ReadDir(dirPath + "/" + fileName)
-		if err != nil {
-			assert.ErrorIs(t, err, os.ErrPermission)
-		}
-		_ = os.Remove(dirPath + "/" + fileName)
-
+		t.Run("file all rights deny", func(t *testing.T) {
+			err := permissionsNoAccess(testDataDir)
+			if err != nil {
+				fmt.Println(err)
+			}
+			_, err = ReadDir(testDataDir)
+			if err != nil {
+				t.Errorf("ReadDir Errors: %v", err)
+			}
+		})
+		_ = permissionsReset(testDataDir)
+		_ = permissionsReset(testDataDir + "/" + testFileName)
+		_ = os.Remove(testDataDir + "/" + testFileName)
+		_ = os.Remove(testDataDir)
 	})
 }

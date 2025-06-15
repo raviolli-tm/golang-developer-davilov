@@ -1,7 +1,14 @@
 package main
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestRunCmd(t *testing.T) {
-	// Place your code here
+	t.Run("Test cmd", func(t *testing.T) {
+		returnCode := RunCmd([]string{}, Environment{})
+		if returnCode != 0 {
+			t.Errorf("RunCmd Errors: returncode=%v expected 0", returnCode)
+		}
+	})
 }
