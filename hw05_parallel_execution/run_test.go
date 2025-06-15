@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -63,8 +64,52 @@ func TestRun(t *testing.T) {
 		err := Run(tasks, workersCount, maxErrorsCount)
 		elapsedTime := time.Since(start)
 		require.NoError(t, err)
+		require.LessOrEqual(t, int64(elapsedTime), int64(sumTime/2), "tasks were run sequentially?")
 
 		require.Equal(t, runTasksCount, int32(tasksCount), "not all tasks were completed")
-		require.LessOrEqual(t, int64(elapsedTime), int64(sumTime/2), "tasks were run sequentially?")
+	})
+
+	t.Run("tasks without errors via require.Eventually", func(t *testing.T) {
+		tasksCount := 50
+		tasks := make([]Task, 0, tasksCount)
+
+		var runTasksCount int32
+		var sumTime time.Duration
+
+		for i := 0; i < tasksCount; i++ {
+			taskSleep := time.Millisecond * 35
+			sumTime += taskSleep
+
+			tasks = append(tasks, func() error {
+				for i := 0; i < 100_000_000; i++ {
+					j := i
+					i = j
+				}
+				atomic.AddInt32(&runTasksCount, 1)
+				return nil
+			})
+		}
+
+		runtime.GOMAXPROCS(2)
+		workersCount := 5
+		maxErrorsCount := 1
+		fmt.Println(sumTime)
+
+		start := time.Now()
+		for i := 0; i < 100_000_000; i++ {
+			j := i
+			i = j
+		}
+		elapsedTime := time.Since(start)
+		fmt.Println("------", elapsedTime)
+
+		start = time.Now()
+		err := Run(tasks, workersCount, maxErrorsCount)
+
+		elapsedTime = time.Since(start)
+		fmt.Println(elapsedTime)
+
+		require.NoError(t, err)
+		require.Equal(t, runTasksCount, int32(tasksCount), "not all tasks were completed")
 	})
 }
