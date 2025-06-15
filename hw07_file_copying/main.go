@@ -1,12 +1,16 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"fmt"
 )
 
 var (
-	from, to      string
-	limit, offset int64
+	from, to                    string
+	limit, offset               int64
+	ErrFromVarIsNotDefinedError = errors.New("from param is not defined")
+	ErrToVarIsNotDefinedError   = errors.New("to param is not defined")
 )
 
 func init() {
@@ -18,5 +22,20 @@ func init() {
 
 func main() {
 	flag.Parse()
-	// Place your code here.
+	if from == "" {
+		fmt.Println("Fatal error: ", ErrFromVarIsNotDefinedError)
+		return
+	}
+
+	if to == "" {
+		fmt.Println("Fatal error: ", ErrToVarIsNotDefinedError)
+		return
+	}
+
+	err := Copy(from, to, offset, limit)
+	if err != nil {
+		fmt.Println("Fatal error: ", err)
+		return
+	}
+	fmt.Println("Success!")
 }
