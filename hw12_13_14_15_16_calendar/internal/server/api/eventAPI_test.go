@@ -7,7 +7,6 @@ import (
 	api "github.com/davilov/hw12_13_14_15_calendar/api/go"
 	"github.com/google/uuid"
 	"net/http"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -44,18 +43,22 @@ func GetCalendarEvent(expected *api.Event) ([]api.Event, error) {
 		return nil, err
 	}
 
+	if expected == nil {
+		return events, nil
+	}
 	if expected.EventId != "" {
 		for _, event := range events {
 			if event.EventId == expected.EventId {
-				if !reflect.DeepEqual(event, expected) {
+				if event.Title != expected.Title ||
+					event.Description != expected.Description ||
+					event.EventNotifyTime != expected.EventNotifyTime ||
+					event.UserId != expected.UserId {
 					return nil, fmt.Errorf("event didn't change")
 				}
 			}
 		}
 	}
-
 	return events, nil
-
 }
 
 func DeleteCalendarEvent(t *testing.T) {
@@ -129,6 +132,7 @@ func CreateCalendarEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	uuidCode, _ = uuid.Parse(event.EventId)
 	_, err = GetCalendarEvent(&event)
 	if err != nil {
 		t.Fatal(err)
