@@ -8,6 +8,11 @@ import (
 
 type UserRole string
 
+type UserRole2 struct {
+	Role           string `validate:"in:admin,stuff"`
+	WorkExperience int
+}
+
 // Test the function on different structures and other types.
 type (
 	User struct {
@@ -15,7 +20,7 @@ type (
 		Name   string
 		Age    int             `validate:"min:18|max:50"`
 		Email  string          `validate:"regexp:^\\w+@\\w+\\.\\w+$"`
-		Role   UserRole        `validate:"in:admin,stuff"`
+		Role   UserRole2       `validate:"nested"`
 		Phones []string        `validate:"len:11"`
 		meta   json.RawMessage //nolint:unused
 	}
@@ -46,6 +51,11 @@ func TestValidate(t *testing.T) {
 		},
 		// ...
 		// Place your code here.
+	}
+
+	err := Validate(User{ID: "10", Name: "dima", Age: 20, Email: "mail@mail.ru", Role: UserRole2{Role: "admin", WorkExperience: 2}})
+	if err != nil {
+		return
 	}
 
 	for i, tt := range tests {
