@@ -6,7 +6,6 @@ import (
 )
 
 func main() {
-	// Place your code here.
 	envPath := os.Args[1]
 
 	cmd := make([]string, 0)

@@ -5,9 +5,7 @@ import (
 	"os/exec"
 )
 
-// RunCmd runs a command + arguments (cmd) with environment variables from env.
 func RunCmd(cmd []string, env Environment) (returnCode int) {
-	// Place your code here.
 
 	for varName, varValue := range env {
 		if varValue.NeedRemove {
