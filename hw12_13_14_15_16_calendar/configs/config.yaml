@@ -12,10 +12,10 @@ logger:
 
 storage_type: "postgres"
 postgres:
-  host: "localhost"
+  host: "172.18.0.2"
   port: 5432
-  database: "education"
-  username: "postgres"
-  password: "postgres"
+  database: "postgres_db"
+  username: "postgres_user"
+  password: "postgres_password"
   schema: "calendar"
 

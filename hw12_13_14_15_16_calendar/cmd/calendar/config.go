@@ -36,7 +36,6 @@ func NewConfig() Config {
 		fmt.Println("Error: File could not be parsed")
 		os.Exit(1)
 	}
-
 	return cnf
 }
 

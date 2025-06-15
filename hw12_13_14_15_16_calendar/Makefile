@@ -29,11 +29,11 @@ build-img:
 		-f build/Dockerfile .
 
 run-img: build-img
-	@echo "Остановка и удаление старого контейнера (если существует)..."
+	@echo "Stop and delete old docker container(if exists)..."
 	-docker stop $(APP_NAME) 2>/dev/null || true
 	-docker rm $(APP_NAME) 2>/dev/null || true
 
-	@echo "Запуск нового контейнера..."
+	@echo "Run the new docker container..."
 	docker run -d --name $(APP_NAME) -p 8080:8080 $(DOCKER_IMG)
 
 

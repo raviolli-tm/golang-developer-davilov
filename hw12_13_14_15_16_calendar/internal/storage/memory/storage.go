@@ -18,23 +18,23 @@ func New() *Storage {
 	return &Storage{mu: sync.RWMutex{}, data: make(map[uuid.UUID]storage.Event), idx: uuid.New()}
 }
 
-func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) error {
+func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) (storage.Event, error) {
 
 	err := e.Validate()
 	if err != nil {
-		return err
+		return storage.Event{}, err
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, ok := s.data[id]
 	if !ok {
-		return appErrors.ErrIdDoesNotExist
+		return storage.Event{}, appErrors.ErrIdDoesNotExist
 	}
 	e.ID = id
 	s.data[id] = e
 
-	return nil
+	return e, nil
 }
 
 func (s *Storage) ReadEvents(context.Context) ([]storage.Event, error) {
@@ -48,21 +48,21 @@ func (s *Storage) ReadEvents(context.Context) ([]storage.Event, error) {
 	return result, nil
 }
 
-func (s *Storage) DeleteEvent(id uuid.UUID, ctx context.Context) error {
+func (s *Storage) DeleteEvent(id uuid.UUID, ctx context.Context) (uuid.UUID, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	_, ok := s.data[id]
 	if !ok {
-		return appErrors.ErrIdDoesNotExist
+		return uuid.Nil, appErrors.ErrIdDoesNotExist
 	}
 	delete(s.data, id)
-	return nil
+	return id, nil
 }
 
-func (s *Storage) CreateEvent(e storage.Event, ctx context.Context) error {
+func (s *Storage) CreateEvent(e storage.Event, ctx context.Context) (storage.Event, error) {
 	err := e.Validate()
 	if err != nil {
-		return err
+		return storage.Event{}, err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -70,6 +70,6 @@ func (s *Storage) CreateEvent(e storage.Event, ctx context.Context) error {
 	s.data[s.idx] = e
 	s.idx = uuid.New()
 
-	return nil
+	return e, nil
 
 }

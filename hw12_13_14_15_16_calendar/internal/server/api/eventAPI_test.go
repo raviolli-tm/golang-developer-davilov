@@ -7,6 +7,7 @@ import (
 	api "github.com/davilov/hw12_13_14_15_calendar/api/go"
 	"github.com/google/uuid"
 	"net/http"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -23,7 +24,7 @@ func TestAPI(t *testing.T) {
 
 }
 
-func GetCalendarEvent(expected []api.Event) ([]api.Event, error) {
+func GetCalendarEvent(expected *api.Event) ([]api.Event, error) {
 
 	fmt.Print("Run GetCalendarEvent API...  ")
 	resp, err := http.Get("http://localhost:8080/calendar")
@@ -43,9 +44,13 @@ func GetCalendarEvent(expected []api.Event) ([]api.Event, error) {
 		return nil, err
 	}
 
-	if expected != nil {
-		if len(events) != len(expected) {
-			return nil, fmt.Errorf("incorrect response length")
+	if expected.EventId != "" {
+		for _, event := range events {
+			if event.EventId == expected.EventId {
+				if !reflect.DeepEqual(event, expected) {
+					return nil, fmt.Errorf("event didn't change")
+				}
+			}
 		}
 	}
 
@@ -55,7 +60,7 @@ func GetCalendarEvent(expected []api.Event) ([]api.Event, error) {
 
 func DeleteCalendarEvent(t *testing.T) {
 
-	event, err := GetCalendarEvent(nil)
+	events, err := GetCalendarEvent(nil)
 	fmt.Print("Run DeleteCalendarEvent API...  ")
 	if err != nil {
 		t.Fatal(err)
@@ -78,7 +83,10 @@ func DeleteCalendarEvent(t *testing.T) {
 		t.Errorf("Expected status OK, got %v", resp.Status)
 	}
 
-	_, err = GetCalendarEvent(event[:len(event)-1])
+	eventsAfterDelete, err := GetCalendarEvent(nil)
+	if len(events)-1 != len(eventsAfterDelete) {
+		t.Fatal(fmt.Errorf("event didn't delete"))
+	}
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,10 +105,6 @@ func CreateCalendarEvent(t *testing.T) {
 		EventNotifyTime: 15,
 	}
 
-	event, err := GetCalendarEvent(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	fmt.Print("Run CreateCalendarEvent API...  ")
 
 	jsonData, err := json.Marshal(eventCreate)
@@ -109,32 +113,25 @@ func CreateCalendarEvent(t *testing.T) {
 	}
 
 	resp, err := http.Post("http://localhost:8080/calendar", "application/json", bytes.NewBuffer(jsonData))
-	defer resp.Body.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer resp.Body.Close()
 
 	fmt.Println("Status Code:", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatal(fmt.Errorf("bad status: %s", resp.Status))
 	}
-	event = append(event, eventCreate)
 
-	eventAfterCreate, err := GetCalendarEvent(event)
+	var event api.Event
+	err = json.NewDecoder(resp.Body).Decode(&event)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	for i := 0; i < len(eventAfterCreate); i++ {
-		j := 0
-		for ; j < len(event); j++ {
-			if event[j].EventId == eventAfterCreate[i].EventId {
-				break
-			}
-		}
-		if j < len(event) {
-			uuidCode, _ = uuid.Parse(eventAfterCreate[i].EventId)
-		}
+	_, err = GetCalendarEvent(&event)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 }
@@ -151,10 +148,6 @@ func UpdateCalendarEvent(t *testing.T) {
 		EventNotifyTime: 15,
 	}
 
-	event, err := GetCalendarEvent(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	fmt.Print("Run UpdateCalendarEvent API...  ")
 	jsonData, err := json.Marshal(eventUpdate)
 	if err != nil {
@@ -171,11 +164,18 @@ func UpdateCalendarEvent(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
+
+	var event api.Event
+	err = json.NewDecoder(resp.Body).Decode(&event)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	fmt.Println("Status Code:", resp.StatusCode)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatal(fmt.Errorf("bad status: %s", resp.Status))
 	}
-	_, err = GetCalendarEvent(event)
+	_, err = GetCalendarEvent(&event)
 	if err != nil {
 		t.Fatal(err)
 	}

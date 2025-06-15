@@ -20,23 +20,23 @@ type Logger interface {
 }
 
 type Storage interface {
-	CreateEvent(e storage.Event, ctx context.Context) error
+	CreateEvent(e storage.Event, ctx context.Context) (storage.Event, error)
 	ReadEvents(ctx context.Context) ([]storage.Event, error)
-	UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) error
-	DeleteEvent(id uuid.UUID, ctx context.Context) error
+	UpdateEvent(id uuid.UUID, e storage.Event, ctx context.Context) (storage.Event, error)
+	DeleteEvent(id uuid.UUID, ctx context.Context) (uuid.UUID, error)
 }
 
 func New(logger Logger, storage Storage) *App {
 	return &App{logger: logger, storage: storage}
 }
 
-func (a *App) CreateEvent(ctx context.Context, event storage.Event) error {
+func (a *App) CreateEvent(ctx context.Context, event storage.Event) (storage.Event, error) {
 
-	err := a.storage.CreateEvent(event, ctx)
+	event, err := a.storage.CreateEvent(event, ctx)
 	if err != nil {
-		return fmt.Errorf("create event: %w", err)
+		return storage.Event{}, fmt.Errorf("create event: %w", err)
 	}
-	return nil
+	return event, nil
 }
 
 func (a *App) ReadEvents(ctx context.Context) ([]storage.Event, error) {
@@ -47,19 +47,19 @@ func (a *App) ReadEvents(ctx context.Context) ([]storage.Event, error) {
 	}
 	return events, nil
 }
-func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event) error {
+func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event) (storage.Event, error) {
 
-	err := a.storage.UpdateEvent(id, event, ctx)
+	event, err := a.storage.UpdateEvent(id, event, ctx)
 	if err != nil {
-		return fmt.Errorf("update event: %w", err)
+		return storage.Event{}, fmt.Errorf("update event: %w", err)
 	}
-	return nil
+	return event, nil
 }
-func (a *App) DeleteEvent(ctx context.Context, id uuid.UUID) error {
+func (a *App) DeleteEvent(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 
-	err := a.storage.DeleteEvent(id, ctx)
+	_, err := a.storage.DeleteEvent(id, ctx)
 	if err != nil {
-		return fmt.Errorf("delete event: %w", err)
+		return uuid.Nil, fmt.Errorf("delete event: %w", err)
 	}
-	return nil
+	return id, nil
 }

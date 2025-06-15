@@ -91,18 +91,18 @@ func TestStorage(t *testing.T) {
 		switch ts.operation {
 		case 0:
 			{
-				err := calendar.CreateEvent(ts.input, nil)
+				_, err := calendar.CreateEvent(ts.input, nil)
 				require.NoError(t, err)
 
 			}
 		case 2:
 			{
-				err := calendar.DeleteEvent(id, nil)
+				_, err := calendar.DeleteEvent(id, nil)
 				require.NoError(t, err)
 			}
 		case 3:
 			{
-				err := calendar.UpdateEvent(id, ts.input, nil)
+				_, err := calendar.UpdateEvent(id, ts.input, nil)
 				require.NoError(t, err)
 			}
 		case 1:
@@ -152,13 +152,13 @@ func TestStorageErr(t *testing.T) {
 			}
 		case 2:
 			{
-				err := calendar.DeleteEvent(uuid.New(), nil)
+				_, err := calendar.DeleteEvent(uuid.New(), nil)
 				require.ErrorIs(t, err, ts.err)
 			}
 
 		case 3:
 			{
-				err := calendar.UpdateEvent(uuid.New(), storage.Event{
+				_, err := calendar.UpdateEvent(uuid.New(), storage.Event{
 					Title:           "test title",
 					DateStart:       time.Now(),
 					DateEnd:         time.Now().Add(15 * time.Minute),

@@ -8,10 +8,10 @@ import (
 )
 
 type Application interface {
-	CreateEvent(context.Context, storage.Event) error
+	CreateEvent(context.Context, storage.Event) (storage.Event, error)
 	ReadEvents(ctx context.Context) ([]storage.Event, error)
-	DeleteEvent(context.Context, uuid.UUID) error
-	UpdateEvent(context.Context, uuid.UUID, storage.Event) error
+	DeleteEvent(context.Context, uuid.UUID) (uuid.UUID, error)
+	UpdateEvent(context.Context, uuid.UUID, storage.Event) (storage.Event, error)
 }
 type EventAPIService struct {
 	App Application
@@ -31,33 +31,33 @@ func (s *EventAPIService) GetCalendarEvents(ctx context.Context) (api.ImplRespon
 
 }
 func (s *EventAPIService) AddCalendarEvent(ctx context.Context, event api.Event) (api.ImplResponse, error) {
-	err := s.App.CreateEvent(ctx, s.ApiEventToStorageEvent(event))
+	createdEvent, err := s.App.CreateEvent(ctx, s.ApiEventToStorageEvent(event))
 	if err != nil {
 		return api.Response(500, err), err
 	}
-	return api.Response(200, "success"), nil
+	return api.Response(200, createdEvent), nil
 }
 func (s *EventAPIService) UpdateCalendarEventById(ctx context.Context, id string, event api.Event) (api.ImplResponse, error) {
 	uid, err := uuid.Parse(id)
 	if err != nil {
 		return api.Response(422, err), err
 	}
-	err = s.App.UpdateEvent(ctx, uid, s.ApiEventToStorageEvent(event))
+	updatedEvent, err := s.App.UpdateEvent(ctx, uid, s.ApiEventToStorageEvent(event))
 	if err != nil {
 		return api.Response(500, err), err
 	}
-	return api.Response(200, "success"), nil
+	return api.Response(200, updatedEvent), nil
 }
 func (s *EventAPIService) DeleteCalendarEventById(ctx context.Context, id string) (api.ImplResponse, error) {
 	uid, err := uuid.Parse(id)
 	if err != nil {
 		return api.Response(422, err), err
 	}
-	err = s.App.DeleteEvent(ctx, uid)
+	deletedUUID, err := s.App.DeleteEvent(ctx, uid)
 	if err != nil {
 		return api.Response(500, err), err
 	}
-	return api.Response(200, "success"), nil
+	return api.Response(200, deletedUUID.String()), nil
 }
 
 func (s *EventAPIService) StorageEventToApiEvent(event storage.Event) api.Event {
