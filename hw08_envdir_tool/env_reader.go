@@ -37,7 +37,6 @@ func ReadDir(dir string) (Environment, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		if len(all) == 0 {
 			fileEnv.NeedRemove = true
 		} else {
