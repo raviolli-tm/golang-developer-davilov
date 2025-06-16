@@ -25,7 +25,6 @@ func RunCmd(cmd []string, env Environment) (returnCode int) {
 	command.Env = os.Environ()
 
 	err := command.Run()
-
 	if err != nil {
 		return 0
 	}
