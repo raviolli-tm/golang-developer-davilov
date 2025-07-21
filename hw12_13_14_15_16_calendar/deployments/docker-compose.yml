@@ -5,6 +5,8 @@ services:
 
   postgres:
     image: postgres:latest
+    networks:
+      - database
     environment:
       POSTGRES_HOST_AUTH_METHOD: md5
       POSTGRES_USER: postgres
@@ -40,9 +42,90 @@ services:
       timeout: 10s
       retries: 5
     restart: unless-stopped
-    tty: true
-    stdin_open: true
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.9.1
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka
+    ports:
+      - "9092:9092"
+    hostname: broker
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_PROCESS_ROLES:
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: broker-ui
+    ports:
+      - "8090:8080"
+    restart: always
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=broker:29092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zookeeper:2181
+    links:
+      - kafka
+      - zookeeper
+
+  calendar:
+    build:
+      context: ../build
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: ../build
+      dockerfile: Dockerfile-scheduler
+    networks:
+      - backend
+      - kafka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  storer:
+    build:
+      context: ../build
+      dockerfile: Dockerfile-storer
+    networks:
+      - backend
+      - kafka
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
 
 volumes:
   pgdata:
     driver: local
+
+networks:
+  kafka:
+    driver: bridge
+  backend:
+    driver: bridge

@@ -16,7 +16,6 @@ type Event struct {
 	Description     string    `json:"description"`
 	UserId          int       `json:"user_id"`
 	EventNotifyTime int       `json:"event_notify_time"`
-	// TODO
 }
 
 func (e *Event) Validate() error {

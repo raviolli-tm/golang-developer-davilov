@@ -12,7 +12,7 @@ logger:
 
 storage_type: "postgres"
 postgres:
-  host: "192.168.0.13"
+  host: "postgres"
   port: 5432
   database: "postgres_db"
   username: "postgres_user"

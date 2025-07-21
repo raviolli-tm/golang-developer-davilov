@@ -38,7 +38,7 @@ func main() {
 
 	switch config.StorageType {
 	case "postgres":
-		storage = sqlstorage.New(config.Database, ctx)
+		storage = sqlstorage.New(config.Database, ctx).NewEventStorage()
 	case "in-memory":
 		storage = memorystorage.New()
 	default:

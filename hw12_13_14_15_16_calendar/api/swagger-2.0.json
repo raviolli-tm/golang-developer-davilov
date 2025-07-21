@@ -1,0 +1,258 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "description": "This is a sample Calendar Server based on the OpenAPI 3.0 specification.",
+    "title": "Swagger Calendar - OpenAPI 3.0",
+    "version": "1.0.12"
+  },
+  "host": "8080",
+  "basePath": "/caledar",
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/calendar": {
+      "get": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "$ref": "#/definitions/Event"
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied"
+          },
+          "404": {
+            "description": "Calendar Event not found"
+          },
+          "422": {
+            "description": "Validation exception"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "tags": [
+          "Calendar Events"
+        ],
+        "description": "Get all calendar events",
+        "operationId": "GetCalendarEvents",
+        "summary": "Get all calendar events"
+      },
+      "post": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Add a calendar event to calendar",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Event"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "schema": {
+              "$ref": "#/definitions/Event"
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "422": {
+            "description": "Validation exception"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "tags": [
+          "Calendar Events"
+        ],
+        "description": "Add a calendar event to calendar.",
+        "operationId": "AddCalendarEvent",
+        "summary": "Add a calendar event to calendar."
+      }
+    },
+    "/calendar/{CalendarEventId}": {
+      "delete": {
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Calendar Event id to delete",
+            "format": "uuid",
+            "in": "path",
+            "name": "CalendarEventId",
+            "required": true,
+            "type": "string",
+            "x-go-type": "github.com/google/uuid.UUID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Calendar Event deleted"
+          },
+          "404": {
+            "description": "Calendar Event not found"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "tags": [
+          "Calendar Events"
+        ],
+        "description": "Delete Calendar Event by id.",
+        "operationId": "DeleteCalendarEventById",
+        "summary": "Delete Calendar Event by id."
+      },
+      "put": {
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "description": "Calendar Event Id to update",
+            "format": "uuid",
+            "in": "path",
+            "name": "CalendarEventId",
+            "required": true,
+            "type": "string",
+            "x-go-type": "github.com/google/uuid.UUID"
+          },
+          {
+            "description": "Updated event's data",
+            "in": "body",
+            "name": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/Event"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "schema": {
+              "$ref": "#/definitions/Event"
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied"
+          },
+          "404": {
+            "description": "Calendar Event not found"
+          },
+          "default": {
+            "description": "Unexpected error",
+            "schema": {
+              "$ref": "#/definitions/Error"
+            }
+          }
+        },
+        "tags": [
+          "Calendar Events"
+        ],
+        "description": "Update Calendar Event by Id",
+        "operationId": "UpdateCalendarEventById",
+        "summary": "Update Calendar Event by Id."
+      }
+    }
+  },
+  "definitions": {
+    "Error": {
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "type": "object"
+    },
+    "Event": {
+      "properties": {
+        "DateEnd": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "DateStart": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "Description": {
+          "example": "Стартовая встреча для делового совещания",
+          "type": "string"
+        },
+        "EventNotifyTime": {
+          "example": 15,
+          "format": "int32",
+          "type": "integer"
+        },
+        "ID": {
+          "example": "550e8400-e29b-41d4-a716-446655440000",
+          "type": "string",
+          "x-go-type": "github.com/google/uuid.UUID"
+        },
+        "Title": {
+          "example": "Стартовая встреча",
+          "type": "string"
+        },
+        "UserId": {
+          "example": 123456,
+          "format": "int32",
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "format": "event"
+    }
+  },
+  "tags": [
+    {
+      "externalDocs": {
+        "description": "Find out more",
+        "url": "https://github.com/raviolli-tm/golang-developer-davilov"
+      },
+      "description": "Basic calendar operations",
+      "name": "Calendar Events"
+    }
+  ],
+  "externalDocs": {
+    "description": "About calendar server",
+    "url": "https://github.com/raviolli-tm/golang-developer-davilov"
+  },
+  "x-components": {}
+}

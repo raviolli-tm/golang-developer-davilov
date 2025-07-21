@@ -1,21 +1,3 @@
-DO $$
-BEGIN
-
-IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres_user') THEN
-    CREATE USER postgres_user WITH PASSWORD 'postgres_password';
-    RAISE NOTICE 'Role "postgres_user" created successfully';
-ELSE
-    RAISE NOTICE 'Role "postgres_user" already exists';
-END IF;
-
-END $$;
-
-CREATE SCHEMA if not exists calendar AUTHORIZATION postgres_user;
-
-GRANT USAGE ON SCHEMA calendar TO postgres_user;
-GRANT CREATE ON SCHEMA calendar TO postgres_user;
-
-
 DROP TABLE IF EXISTS calendar.calendar_event;
 CREATE TABLE calendar.calendar_event
 (

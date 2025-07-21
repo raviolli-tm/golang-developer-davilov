@@ -38,5 +38,3 @@ func NewConfig() Config {
 	}
 	return cnf
 }
-
-// TODO
