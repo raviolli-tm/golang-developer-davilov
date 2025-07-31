@@ -30,7 +30,6 @@ func NewTelnetClient(address string, timeout time.Duration, in io.ReadCloser, ou
 }
 
 func (s *TelnetClientImpl) Connect() error {
-
 	if s.conn != nil {
 		return nil
 	}
@@ -44,6 +43,7 @@ func (s *TelnetClientImpl) Connect() error {
 
 	return nil
 }
+
 func (s *TelnetClientImpl) Close() error {
 	err := s.conn.Close()
 	if err != nil {
@@ -68,12 +68,11 @@ func (s *TelnetClientImpl) Send() error {
 	}
 	_, err := io.Copy(s.tcpOut, s.in)
 	if err != nil {
-
 		return err
 	}
-
 	return s.tcpOut.Flush()
 }
+
 func (s *TelnetClientImpl) Receive() error {
 	if s.conn == nil {
 		return fmt.Errorf("no connection")
@@ -83,5 +82,4 @@ func (s *TelnetClientImpl) Receive() error {
 	}
 	_, err := io.Copy(s.out, s.tcpIn)
 	return err
-
 }

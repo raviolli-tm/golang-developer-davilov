@@ -27,14 +27,16 @@ func main() {
 	host := flag.Arg(0)
 	port := flag.Arg(1)
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
+	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	client := NewTelnetClient(fmt.Sprintf("%s:%s", host, port), timeout, os.Stdin, os.Stdout)
 
 	err := client.Connect()
 	if err != nil {
-		log.Fatalf("Unable to connect by tcp, %v", err)
+		log.Printf("Unable to connect by tcp, %v", err)
+		return
 	}
 
 	go func() {
@@ -49,7 +51,8 @@ func main() {
 		case <-ctx.Done():
 			err := client.Close()
 			if err != nil {
-				log.Fatalf("Unable to close tcp connection, %v", err)
+				log.Printf("Unable to close tcp connection, %v", err)
+				return
 			}
 		default:
 			err = client.Send()
@@ -57,7 +60,5 @@ func main() {
 				cancel()
 			}
 		}
-
 	}
-
 }

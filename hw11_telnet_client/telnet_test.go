@@ -59,7 +59,6 @@ func TestTelnetClient(t *testing.T) {
 			require.Equal(t, "hello\n", string(request)[:n])
 
 			n, err = conn.Write([]byte("world\n"))
-			n, err = conn.Write([]byte("world\n"))
 			require.NoError(t, err)
 			require.NotEqual(t, 0, n)
 		}()
