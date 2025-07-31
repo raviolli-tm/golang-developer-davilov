@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -14,6 +15,8 @@ import (
 func TestTelnetClient(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		l, err := net.Listen("tcp", "127.0.0.1:")
+		addr := l.Addr().(*net.TCPAddr)
+		fmt.Printf("Сервер слушает на %s\n", addr)
 		require.NoError(t, err)
 		defer func() { require.NoError(t, l.Close()) }()
 
@@ -55,6 +58,7 @@ func TestTelnetClient(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, "hello\n", string(request)[:n])
 
+			n, err = conn.Write([]byte("world\n"))
 			n, err = conn.Write([]byte("world\n"))
 			require.NoError(t, err)
 			require.NotEqual(t, 0, n)
