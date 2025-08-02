@@ -38,6 +38,7 @@ func main() {
 
 		select {
 		case <-ctx.Done():
+			return
 
 		case notification := <-consumer.Channel:
 			ctxScan, cancel := context.WithTimeout(context.Background(), 30*time.Second)

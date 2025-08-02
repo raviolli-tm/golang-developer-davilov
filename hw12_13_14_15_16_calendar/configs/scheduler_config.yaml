@@ -1,5 +1,5 @@
 postgres:
-  host: "192.168.0.13"
+  host: "postgres"
   port: 5432
   database: "postgres_db"
   username: "postgres_user"
@@ -8,5 +8,8 @@ postgres:
 broker:
   brokers_url: "kafka:9092"
   topic: "calendar-command"
-  interval:
+  interval: 10
   group_id:
+retry:
+  max_retries: 3
+  base_time_seconds: 5

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/segmentio/kafka-go"
 	"log"
+	"os"
 )
 
 type ConsumerKafka struct {
@@ -25,6 +26,7 @@ func (k *ConsumerKafka) ConsumeWithContext(ctx context.Context) {
 		Brokers: []string{k.consumerCfg.BrokersUrl},
 		Topic:   k.consumerCfg.Topic,
 		GroupID: k.consumerCfg.GroupId,
+		Logger:  log.New(os.Stdout, "", log.LstdFlags),
 	})
 	defer reader.Close()
 

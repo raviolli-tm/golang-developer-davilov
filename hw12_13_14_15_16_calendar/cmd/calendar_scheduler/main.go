@@ -7,6 +7,7 @@ import (
 	kafka "github.com/davilov/hw12_13_14_15_calendar/internal/broker"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
+	"github.com/google/uuid"
 	"log"
 	"os/signal"
 	"syscall"
@@ -49,8 +50,21 @@ func main() {
 		select {
 
 		case <-ctx.Done():
+			notification, _ := json.Marshal(&storage.Notification{
+				NotificationId:         uuid.New(),
+				NotificationEventTitle: "",
+				NotificationEventDate:  time.Now(),
+				NotificationDate:       time.Now().Add(10 * time.Minute),
+				NotificationUserId:     0,
+			})
+			err = kafkaProducer.SendMessage(
+				context.Background(),
+				[]byte(time.Now().Format("2006-01-02-15-04-05")),
+				notification)
+
 			log.Println("Shutting down producer...")
 			kafkaProducer.Close()
+			return
 
 		case <-tickerNotify.C:
 			go func() {
