@@ -33,7 +33,7 @@ func (s *TelnetClientImpl) Connect() error {
 	if s.conn != nil {
 		return nil
 	}
-	dial, err := net.DialTimeout("tcp", "localhost:4242", s.timeout)
+	dial, err := net.DialTimeout("tcp", s.address, s.timeout)
 	if err != nil {
 		return err
 	}
