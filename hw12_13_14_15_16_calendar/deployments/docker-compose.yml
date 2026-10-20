@@ -5,6 +5,8 @@ services:
 
   postgres:
     image: postgres:latest
+    networks:
+      - backend
     environment:
       POSTGRES_HOST_AUTH_METHOD: md5
       POSTGRES_USER: postgres
@@ -40,9 +42,104 @@ services:
       timeout: 10s
       retries: 5
     restart: unless-stopped
-    tty: true
-    stdin_open: true
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    networks:
+      kafka-net:
+        aliases:
+          - zk
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.9.1
+    depends_on:
+      - zookeeper
+    networks:
+      kafka-net:
+        aliases:
+          - kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    hostname: kafka
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zk:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+  kafka-ui:
+    image: provectuslabs/kafka-ui
+    container_name: broker-ui
+    ports:
+      - "8090:8080"
+    networks:
+      kafka-net:
+        aliases:
+          - kafkaui
+    restart: always
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=local
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=PLAINTEXT://kafka:9092
+      - KAFKA_CLUSTERS_0_ZOOKEEPER=zk:2181
+    links:
+      - kafka
+      - zookeeper
+
+  storer:
+    build:
+      context: ..
+      dockerfile: ./build/Dockerfile-storer
+    networks:
+      - backend
+      - kafka-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  calendar:
+    build:
+      context: ..
+      dockerfile: ./build/Dockerfile
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  scheduler:
+    build:
+      context: ..
+      dockerfile: ./build/Dockerfile-scheduler
+    networks:
+      - backend
+      - kafka-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+
 
 volumes:
   pgdata:
     driver: local
+
+networks:
+  kafka-net:
+    driver: bridge
+  backend:
+    driver: bridge
+

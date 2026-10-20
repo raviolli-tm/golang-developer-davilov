@@ -1,0 +1,21 @@
+postgres:
+  host: "${POSTGRES_HOST:-postgres}"
+  port: ${POSTGRES_PORT:-5432}
+  database: "${POSTGRES_DB:-postgres_db}"
+  username: "${POSTGRES_USER:-postgres_user}"
+  password: "${POSTGRES_PASSWORD:-postgres_password}"
+  schema: "calendar"
+  sslmode: "${POSTGRES_SSLMODE:-disable}"
+
+broker:
+  brokers_url: "${KAFKA_BROKERS:-kafka:9092}"
+  topic: "${KAFKA_TOPIC:-calendar-command}"
+  interval: ${SCHEDULER_INTERVAL:-5}
+  group_id: "${KAFKA_GROUP_ID:-calendar-scheduler}"
+
+retry:
+  max_retries: ${KAFKA_MAX_RETRIES:-30}
+  base_time_seconds: ${KAFKA_RETRY_BASE_SECONDS:-2}
+
+
+cleanup_interval_hours: ${CLEANUP_INTERVAL_HOURS:-24}

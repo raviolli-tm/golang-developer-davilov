@@ -1,0 +1,14 @@
+postgres:
+  host: "${POSTGRES_HOST:-postgres}"
+  port: ${POSTGRES_PORT:-5432}
+  database: "${POSTGRES_DB:-postgres_db}"
+  username: "${POSTGRES_USER:-notify_user}"
+  password: "${POSTGRES_PASSWORD:-notify_password}"
+  schema: "calendar"
+  sslmode: "${POSTGRES_SSLMODE:-disable}"
+
+broker:
+  brokers_url: "${KAFKA_BROKERS:-kafka:9092}"
+  topic: "${KAFKA_TOPIC:-calendar-command}"
+  interval: ${SCHEDULER_INTERVAL:-5}
+  group_id: "${KAFKA_GROUP_ID:-calendar-storer}"
