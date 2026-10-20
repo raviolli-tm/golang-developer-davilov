@@ -2,6 +2,8 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"os"
 )
 
 var (
@@ -18,5 +20,14 @@ func init() {
 
 func main() {
 	flag.Parse()
-	// Place your code here.
+
+	if flag.NArg() > 0 {
+		fmt.Fprintln(os.Stderr, "unexpected arguments:", flag.Args())
+		os.Exit(1)
+	}
+
+	if err := Copy(from, to, offset, limit); err != nil {
+		fmt.Fprintln(os.Stderr, "Fatal error:", err)
+		os.Exit(1)
+	}
 }
