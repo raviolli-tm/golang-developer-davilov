@@ -5,55 +5,73 @@ import (
 	"fmt"
 	"io"
 	"os"
-
-	"github.com/cheggaaa/pb"
 )
 
 var (
 	ErrFilePathIsRequired    = errors.New("filepath is required")
 	ErrUnsupportedFile       = errors.New("unsupported file")
 	ErrOffsetExceedsFileSize = errors.New("offset exceeds file size")
+	ErrInvalidOffset         = errors.New("offset must not be negative")
+	ErrInvalidLimit          = errors.New("limit must not be negative")
 )
 
+// Copy copies at most limit bytes from fromPath starting at offset into
+// toPath. A zero limit means "copy the rest of the file".
 func Copy(fromPath, toPath string, offset, limit int64) error {
 	if fromPath == "" || toPath == "" {
 		return ErrFilePathIsRequired
 	}
-
-	sourceFile, err := os.OpenFile(fromPath, os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		return err
+	if offset < 0 {
+		return ErrInvalidOffset
+	}
+	if limit < 0 {
+		return ErrInvalidLimit
 	}
 
-	size, err := sourceFile.Seek(0, 2)
+	sourceFile, err := os.Open(fromPath)
+	if err != nil {
+		return fmt.Errorf("open source file: %w", err)
+	}
 	defer sourceFile.Close()
 
+	info, err := sourceFile.Stat()
 	if err != nil {
+		return fmt.Errorf("stat source file: %w", err)
+	}
+	if !info.Mode().IsRegular() {
 		return ErrUnsupportedFile
 	}
-	if size < offset {
+
+	size := info.Size()
+	if offset > size {
 		return ErrOffsetExceedsFileSize
 	}
 
-	sourceFile.Seek(offset, 0)
-	targetFile, _ := os.Create(toPath)
-	defer targetFile.Close()
-	var n int64
-
-	if size-offset < limit || limit == 0 {
-		limit = size - offset
+	remaining := size - offset
+	if limit == 0 || limit > remaining {
+		limit = remaining
 	}
 
-	bar := pb.New64(limit).Start()
-	barReader := bar.NewProxyReader(sourceFile)
-	n, err = io.CopyN(targetFile, barReader, limit)
-	bar.Finish()
+	if _, err := sourceFile.Seek(offset, io.SeekStart); err != nil {
+		return fmt.Errorf("seek source file: %w", err)
+	}
 
+	targetFile, err := os.Create(toPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("create target file: %w", err)
+	}
+	defer targetFile.Close()
+
+	copied, err := io.CopyN(targetFile, sourceFile, limit)
+	if err != nil {
+		return fmt.Errorf("copy data: %w", err)
 	}
 
-	fmt.Printf("%d bytes copied from %s to %s\n", n, from, to)
+	if err := targetFile.Close(); err != nil {
+		return fmt.Errorf("close target file: %w", err)
+	}
+
+	fmt.Printf("%d bytes copied from %s to %s\n", copied, fromPath, toPath)
 
 	return nil
 }
