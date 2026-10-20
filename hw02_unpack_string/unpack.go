@@ -3,43 +3,47 @@ package hw02unpackstring
 import (
 	"errors"
 	"strings"
-	"unicode"
 )
 
 var ErrInvalidString = errors.New("invalid string")
 
+func isDigit(r rune) bool {
+	return r >= '0' && r <= '9'
+}
+
 func Unpack(x string) (string, error) {
 	runes := []rune(x)
-	var flag bool
+	var pending bool
 	var b strings.Builder
 
 	for i := 0; i < len(runes); i++ {
 		switch {
-		case unicode.IsNumber(runes[i]):
-			if !flag {
+		case isDigit(runes[i]):
+			if !pending {
 				return "", ErrInvalidString
 			}
 			b.WriteString(strings.Repeat(string(runes[i-1]), int(runes[i]-'0')))
-			flag = false
+			pending = false
 
 		case runes[i] == '\\':
-			if flag {
+			if pending {
 				b.WriteRune(runes[i-1])
 			}
 			i++
-			if i < len(runes) && (unicode.IsNumber(runes[i]) || runes[i] == '\\') {
-				flag = true
+			if i < len(runes) && (isDigit(runes[i]) || runes[i] == '\\') {
+				pending = true
 			} else {
 				return "", ErrInvalidString
 			}
+
 		default:
-			if flag {
+			if pending {
 				b.WriteRune(runes[i-1])
 			}
-			flag = true
+			pending = true
 		}
 	}
-	if flag {
+	if pending {
 		b.WriteRune(runes[len(runes)-1])
 	}
 	return b.String(), nil
