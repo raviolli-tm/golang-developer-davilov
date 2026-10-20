@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/logger"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/metrics"
 	internalhttp "github.com/davilov/hw12_13_14_15_calendar/internal/server/http"
 	memorystorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/memory"
 	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
@@ -59,6 +61,12 @@ func run() error {
 
 		if err := storage.Close(closeCtx); err != nil {
 			logg.Error("failed to close storage: " + err.Error())
+		}
+	}()
+
+	go func() {
+		if err := metrics.Serve(ctx, config.MetricsAddr()); err != nil && !errors.Is(err, context.Canceled) {
+			logg.Error("failed to serve metrics: " + err.Error())
 		}
 	}()
 

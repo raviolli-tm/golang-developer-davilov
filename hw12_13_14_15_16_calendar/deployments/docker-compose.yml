@@ -61,6 +61,7 @@ services:
       dockerfile: build/Dockerfile
     environment:
       HTTP_PORT: 8888
+      METRICS_PORT: 9101
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: postgres_db
@@ -69,6 +70,7 @@ services:
       LOG_LEVEL: INFO
     ports:
       - "${CALENDAR_HOST_PORT:-8888}:8888"
+      - "${CALENDAR_METRICS_HOST_PORT:-9101}:9101"
     volumes:
       - ../configs/config.yaml:/etc/calendar/config.yaml:ro
     depends_on:
@@ -95,6 +97,9 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: calendar-command
       SCHEDULER_INTERVAL: 2
+      METRICS_PORT: 9102
+    ports:
+      - "${SCHEDULER_METRICS_HOST_PORT:-9102}:9102"
     volumes:
       - ../configs/scheduler_config.yaml:/etc/calendar/scheduler_config.yaml:ro
     depends_on:
@@ -119,6 +124,9 @@ services:
       KAFKA_BROKERS: kafka:9092
       KAFKA_TOPIC: calendar-command
       KAFKA_GROUP_ID: calendar-storer
+      METRICS_PORT: 9103
+    ports:
+      - "${STORER_METRICS_HOST_PORT:-9103}:9103"
     volumes:
       - ../configs/storer_config.yaml:/etc/calendar/storer_config.yaml:ro
     depends_on:
@@ -129,6 +137,20 @@ services:
     networks:
       - backend
       - kafka-net
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+    depends_on:
+      - calendar
+      - scheduler
+      - storer
+    networks:
+      - backend
 
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
@@ -148,6 +170,8 @@ services:
 
 volumes:
   pgdata:
+    driver: local
+  promdata:
     driver: local
 
 networks:

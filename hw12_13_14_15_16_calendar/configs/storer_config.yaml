@@ -13,3 +13,5 @@ broker:
   interval: ${SCHEDULER_INTERVAL:-5}
   group_id: "${KAFKA_GROUP_ID:-calendar-storer}"
 
+metrics:
+  port: ${METRICS_PORT:-9103}

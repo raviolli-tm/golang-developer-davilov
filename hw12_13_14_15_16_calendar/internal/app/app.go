@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/davilov/hw12_13_14_15_calendar/internal/metrics"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	"github.com/google/uuid"
 )
@@ -37,8 +38,11 @@ func New(logger Logger, storage Storage) *App {
 func (a *App) CreateEvent(ctx context.Context, event storage.Event) (storage.Event, error) {
 	event, err := a.storage.CreateEvent(event, ctx)
 	if err != nil {
+		metrics.EventErrorsTotal.WithLabelValues("create").Inc()
 		return storage.Event{}, fmt.Errorf("create event: %w", err)
 	}
+
+	metrics.EventsCreatedTotal.Inc()
 
 	return event, nil
 }
@@ -46,6 +50,7 @@ func (a *App) CreateEvent(ctx context.Context, event storage.Event) (storage.Eve
 func (a *App) ReadEvents(ctx context.Context) ([]storage.Event, error) {
 	events, err := a.storage.ReadEvents(ctx)
 	if err != nil {
+		metrics.EventErrorsTotal.WithLabelValues("list").Inc()
 		return nil, fmt.Errorf("get events: %w", err)
 	}
 
@@ -55,6 +60,7 @@ func (a *App) ReadEvents(ctx context.Context) ([]storage.Event, error) {
 func (a *App) ReadEventsByPeriod(ctx context.Context, from, to time.Time) ([]storage.Event, error) {
 	events, err := a.storage.ReadEventsByPeriod(from, to, ctx)
 	if err != nil {
+		metrics.EventErrorsTotal.WithLabelValues("list_period").Inc()
 		return nil, fmt.Errorf("get events by period: %w", err)
 	}
 
@@ -64,8 +70,11 @@ func (a *App) ReadEventsByPeriod(ctx context.Context, from, to time.Time) ([]sto
 func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event) (storage.Event, error) {
 	event, err := a.storage.UpdateEvent(id, event, ctx)
 	if err != nil {
+		metrics.EventErrorsTotal.WithLabelValues("update").Inc()
 		return storage.Event{}, fmt.Errorf("update event: %w", err)
 	}
+
+	metrics.EventsUpdatedTotal.Inc()
 
 	return event, nil
 }
@@ -73,8 +82,11 @@ func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event
 func (a *App) DeleteEvent(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
 	_, err := a.storage.DeleteEvent(id, ctx)
 	if err != nil {
+		metrics.EventErrorsTotal.WithLabelValues("delete").Inc()
 		return uuid.Nil, fmt.Errorf("delete event: %w", err)
 	}
+
+	metrics.EventsDeletedTotal.Inc()
 
 	return id, nil
 }

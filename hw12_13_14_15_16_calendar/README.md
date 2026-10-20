@@ -8,13 +8,15 @@
 #### Запуск
 
 ```bash
-make up                  # postgres, kafka, calendar, scheduler, storer
+make up                  # postgres, kafka, calendar, scheduler, storer, prometheus
 make down                # остановить и удалить volume'ы
 make integration-tests   # поднять окружение, прогнать интеграционные тесты, всё удалить
 ```
 
 * API: <http://localhost:8888/>
 * Swagger/OpenAPI: [`api/swagger.yaml`](./api/swagger.yaml)
+* Prometheus: <http://localhost:9090/>
+* Метрики: <http://localhost:8888/metrics>, <http://localhost:9102/metrics>, <http://localhost:9103/metrics>
 
 Если стандартные порты заняты, их можно переопределить при запуске:
 
@@ -23,7 +25,8 @@ POSTGRES_HOST_PORT=55432 KAFKA_HOST_PORT=39092 PROMETHEUS_HOST_PORT=19090 make u
 ```
 
 Доступные переменные: `POSTGRES_HOST_PORT`, `ZOOKEEPER_HOST_PORT`, `KAFKA_HOST_PORT`,
-`CALENDAR_HOST_PORT`, `KAFKA_UI_HOST_PORT`.
+`CALENDAR_HOST_PORT`, `CALENDAR_METRICS_HOST_PORT`, `SCHEDULER_METRICS_HOST_PORT`,
+`STORER_METRICS_HOST_PORT`, `PROMETHEUS_HOST_PORT`, `KAFKA_UI_HOST_PORT`.
 
 Локальный запуск без Docker:
 
@@ -32,6 +35,8 @@ make run                 # использует configs/config.yaml
 make test                # unit-тесты
 make lint                # golangci-lint
 ```
+
+Метрики и примеры запросов PromQL описаны в [`docs/16_METRICS.md`](./docs/16_METRICS.md).
 
 #### Ветки при выполнении
 - `hw12_calendar` (от `master`) -> Merge Request в `master`

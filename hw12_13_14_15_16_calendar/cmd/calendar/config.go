@@ -16,11 +16,16 @@ type Config struct {
 	Database    sqlstorage.DatabaseConf `yaml:"postgres"`
 	StorageType string                  `yaml:"storage_type"`
 	HTTP        HTTPConf                `yaml:"http"`
+	Metrics     MetricsConf             `yaml:"metrics"`
 }
 
 type HTTPConf struct {
 	Host string `yaml:"host"`
 	Port int    `yaml:"port"`
+}
+
+type MetricsConf struct {
+	Port int `yaml:"port"`
 }
 
 func NewConfig() (Config, error) {
@@ -35,4 +40,8 @@ func NewConfig() (Config, error) {
 
 func (c Config) HTTPAddr() string {
 	return fmt.Sprintf("%s:%d", c.HTTP.Host, c.HTTP.Port)
+}
+
+func (c Config) MetricsAddr() string {
+	return fmt.Sprintf(":%d", c.Metrics.Port)
 }

@@ -17,5 +17,7 @@ retry:
   max_retries: ${KAFKA_MAX_RETRIES:-30}
   base_time_seconds: ${KAFKA_RETRY_BASE_SECONDS:-2}
 
+metrics:
+  port: ${METRICS_PORT:-9102}
 
 cleanup_interval_hours: ${CLEANUP_INTERVAL_HOURS:-24}

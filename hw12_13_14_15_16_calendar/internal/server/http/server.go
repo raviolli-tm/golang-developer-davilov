@@ -9,6 +9,7 @@ import (
 
 	genApi "github.com/davilov/hw12_13_14_15_calendar/api/go"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/metrics"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/server/api"
 )
 
@@ -28,6 +29,7 @@ func (s *Server) Start(ctx context.Context) error {
 	handler.HandleFunc("/", s.helloWorld)
 	handler.HandleFunc("/hello", s.helloWorld)
 	handler.HandleFunc("/hello-world", s.helloWorld)
+	handler.Handle("/metrics", metrics.Handler())
 
 	calendarAPI := api.NewEventAPIService(s.application)
 	controller := genApi.NewCalendarEventsAPIController(calendarAPI)
@@ -37,7 +39,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.httpServer = &http.Server{
 		Addr:              s.addr,
-		Handler:           loggingMiddleware(handler, s.logger),
+		Handler:           loggingMiddleware(metricsMiddleware(handler), s.logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      30 * time.Second,

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	kafka "github.com/davilov/hw12_13_14_15_calendar/internal/broker"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/metrics"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
 )
@@ -63,6 +64,12 @@ func run() error {
 		return fmt.Errorf("connect to kafka: %w", err)
 	}
 
+	go func() {
+		if err := metrics.Serve(ctx, config.MetricsAddr()); err != nil {
+			log.Printf("failed to serve metrics: %v", err)
+		}
+	}()
+
 	go cleanupOldEvents(ctx, scannerStorage)
 
 	interval := time.Duration(config.Broker.Interval) * time.Second
@@ -103,11 +110,14 @@ func sendNotifications(
 	producer *kafka.ProducerKafka,
 	from, to time.Time,
 ) {
+	metrics.SchedulerScansTotal.Inc()
+
 	scanCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 
 	events, err := scannerStorage.ReadEventToNotify(scanCtx, from, to)
 	if err != nil {
+		metrics.SchedulerErrorsTotal.Inc()
 		log.Printf("failed to read events to notify: %v", err)
 		return
 	}
@@ -115,6 +125,7 @@ func sendNotifications(
 	for _, event := range events {
 		notification, err := json.Marshal(eventToNotification(event))
 		if err != nil {
+			metrics.SchedulerErrorsTotal.Inc()
 			log.Printf("failed to marshal notification: %v", err)
 			continue
 		}
@@ -124,10 +135,12 @@ func sendNotifications(
 		sendCancel()
 
 		if err != nil {
+			metrics.SchedulerErrorsTotal.Inc()
 			log.Printf("failed to send notification for event %s: %v", event.ID, err)
 			continue
 		}
 
+		metrics.SchedulerNotificationsSentTotal.Inc()
 		log.Printf("notification for event %s has been sent", event.ID)
 	}
 }
@@ -138,6 +151,7 @@ func cleanupOldEvents(ctx context.Context, scannerStorage *sqlstorage.ScannerSto
 
 	toDelete, err := scannerStorage.ReadEventToDelete(cleanupCtx)
 	if err != nil {
+		metrics.SchedulerErrorsTotal.Inc()
 		log.Printf("failed to read events to delete: %v", err)
 		return
 	}
@@ -148,10 +162,12 @@ func cleanupOldEvents(ctx context.Context, scannerStorage *sqlstorage.ScannerSto
 
 	deletedIDs, err := scannerStorage.DeleteEventByIDs(cleanupCtx, toDelete)
 	if err != nil {
+		metrics.SchedulerErrorsTotal.Inc()
 		log.Printf("failed to delete events: %v", err)
 		return
 	}
 
+	metrics.SchedulerEventsDeletedTotal.Add(float64(len(deletedIDs)))
 	log.Printf("deleted %d stale events", len(deletedIDs))
 }
 

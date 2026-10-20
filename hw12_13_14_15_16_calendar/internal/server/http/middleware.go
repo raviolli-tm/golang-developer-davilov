@@ -5,9 +5,13 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/metrics"
+	"github.com/google/uuid"
 )
 
 type loggingResponseWriter struct {
@@ -80,4 +84,38 @@ func loggingMiddleware(next http.Handler, logger app.Logger) http.Handler {
 			logger.Info(message)
 		}
 	})
+}
+
+func metricsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		metrics.HTTPRequestsInFlight.Inc()
+		defer metrics.HTTPRequestsInFlight.Dec()
+
+		startTime := time.Now()
+		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(lrw, r)
+
+		path := normalizePath(r.URL.Path)
+		status := strconv.Itoa(lrw.statusCode)
+
+		metrics.HTTPRequestsTotal.WithLabelValues(r.Method, path, status).Inc()
+		metrics.HTTPRequestDuration.WithLabelValues(r.Method, path).Observe(time.Since(startTime).Seconds())
+	})
+}
+
+// normalizePath replaces UUID path segments with a placeholder to keep the
+// number of time series bounded.
+func normalizePath(path string) string {
+	if path == "" {
+		return "/"
+	}
+
+	segments := strings.Split(path, "/")
+	for i, segment := range segments {
+		if _, err := uuid.Parse(segment); err == nil {
+			segments[i] = "{id}"
+		}
+	}
+
+	return strings.Join(segments, "/")
 }

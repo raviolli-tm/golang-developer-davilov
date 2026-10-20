@@ -12,6 +12,7 @@ import (
 	"time"
 
 	kafka "github.com/davilov/hw12_13_14_15_calendar/internal/broker"
+	"github.com/davilov/hw12_13_14_15_calendar/internal/metrics"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
 )
@@ -60,6 +61,12 @@ func run() error {
 	consumer := kafka.NewConsumer(&config.Broker)
 	go consumer.ConsumeWithContext(ctx)
 
+	go func() {
+		if err := metrics.Serve(ctx, config.MetricsAddr()); err != nil {
+			log.Printf("failed to serve metrics: %v", err)
+		}
+	}()
+
 	log.Println("storer is running...")
 
 	for {
@@ -80,6 +87,7 @@ func run() error {
 func processNotification(ctx context.Context, store *sqlstorage.NotificationStorage, payload []byte) {
 	var notification storage.Notification
 	if err := json.Unmarshal(payload, &notification); err != nil {
+		metrics.NotificationsErrorsTotal.Inc()
 		log.Printf("failed to unmarshal notification: %v", err)
 		return
 	}
@@ -89,9 +97,11 @@ func processNotification(ctx context.Context, store *sqlstorage.NotificationStor
 
 	created, err := store.CreateNotification(insertCtx, notification)
 	if err != nil {
+		metrics.NotificationsErrorsTotal.Inc()
 		log.Printf("failed to create notification: %v", err)
 		return
 	}
 
+	metrics.NotificationsStoredTotal.Inc()
 	log.Printf("notification %s has been stored", created.NotificationId)
 }
