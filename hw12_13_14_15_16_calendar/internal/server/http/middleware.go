@@ -1,6 +1,7 @@
 package internalhttp
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 type loggingResponseWriter struct {
 	http.ResponseWriter
 	statusCode int
+	written    int64
 }
 
 func (lrw *loggingResponseWriter) WriteHeader(code int) {
@@ -20,11 +22,35 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 }
 
 func (lrw *loggingResponseWriter) Write(data []byte) (int, error) {
-	return lrw.ResponseWriter.Write(data)
+	if lrw.statusCode == 0 {
+		lrw.statusCode = http.StatusOK
+	}
+
+	n, err := lrw.ResponseWriter.Write(data)
+	lrw.written += int64(n)
+
+	return n, err
 }
 
-func loggingMiddleware(next http.Handler, logger app.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+// Flush keeps streaming endpoints working through the middleware.
+func (lrw *loggingResponseWriter) Flush() {
+	if flusher, ok := lrw.ResponseWriter.(http.Flusher); ok {
+		flusher.Flush()
+	}
+}
+
+// Hijack keeps websocket-style upgrades working through the middleware.
+func (lrw *loggingResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := lrw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("response writer does not support hijacking")
+	}
+
+	return hijacker.Hijack()
+}
+
+func loggingMiddleware(next http.Handler, logger app.Logger) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 		startTime := time.Now()
@@ -50,9 +76,8 @@ func loggingMiddleware(next http.Handler, logger app.Logger) http.HandlerFunc {
 
 		if lrw.statusCode >= http.StatusInternalServerError {
 			logger.Error(message)
-			return
+		} else {
+			logger.Info(message)
 		}
-
-		logger.Info(message)
-	}
+	})
 }

@@ -1,0 +1,19 @@
+services:
+  integration-tests:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile-integration
+    environment:
+      CALENDAR_URL: http://calendar:8888
+      POSTGRES_DSN: postgres://postgres:postgres@postgres:5432/postgres_db?sslmode=disable
+      INTEGRATION_TEST_TIMEOUT: 180s
+    depends_on:
+      calendar:
+        condition: service_healthy
+      scheduler:
+        condition: service_started
+      storer:
+        condition: service_started
+    networks:
+      - backend
+      - kafka-net

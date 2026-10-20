@@ -1,32 +1,27 @@
-FROM golang:1.23 as build
+FROM golang:1.23-alpine AS build
 
-ENV BIN_FILE /opt/calendar/calendar-app
-ENV CODE_DIR /go/src/
+WORKDIR /src
 
-WORKDIR ${CODE_DIR}
-
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . ${CODE_DIR}
+COPY . .
 
-
-ARG LDFLAGS
-RUN CGO_ENABLED=0 go build \
+ARG LDFLAGS=""
+RUN CGO_ENABLED=0 GOOS=linux go build \
+        -trimpath \
         -ldflags "$LDFLAGS" \
-        -o ${BIN_FILE}  ./cmd/calendar
+        -o /out/calendar ./cmd/calendar
 
-FROM alpine:3.9
+FROM alpine:3.20
 
-LABEL ORGANIZATION="OTUS Online Education"
-LABEL SERVICE="calendar"
-LABEL MAINTAINERS="student@otus.ru"
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -D -u 10001 app
 
-ENV BIN_FILE "/opt/calendar/calendar-app"
-COPY --from=build ${BIN_FILE} ${BIN_FILE}
+COPY --from=build /out/calendar /usr/local/bin/calendar
+COPY configs/config.yaml /etc/calendar/config.yaml
 
-ENV CONFIG_FILE /etc/calendar/config.yaml
-COPY ./configs/config.yaml ${CONFIG_FILE}
+USER app
 
-CMD ${BIN_FILE} -config ${CONFIG_FILE}
+ENTRYPOINT ["/usr/local/bin/calendar"]
+CMD ["-config", "/etc/calendar/config.yaml"]

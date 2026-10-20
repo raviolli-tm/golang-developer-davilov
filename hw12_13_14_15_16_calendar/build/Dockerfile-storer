@@ -1,32 +1,27 @@
-FROM golang:1.23 as build
+FROM golang:1.23-alpine AS build
 
-ENV BIN_FILE /opt/calendar/calendar-storer
-ENV CODE_DIR /go/src/
+WORKDIR /src
 
-WORKDIR ${CODE_DIR}
-
-COPY go.mod .
-COPY go.sum .
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . ${CODE_DIR}
+COPY . .
 
-
-ARG LDFLAGS
-RUN CGO_ENABLED=0 go build \
+ARG LDFLAGS=""
+RUN CGO_ENABLED=0 GOOS=linux go build \
+        -trimpath \
         -ldflags "$LDFLAGS" \
-        -o ${BIN_FILE}  ./cmd/calendar_storer
+        -o /out/calendar-storer ./cmd/calendar_storer
 
-FROM alpine:3.9
+FROM alpine:3.20
 
-LABEL ORGANIZATION="OTUS Online Education"
-LABEL SERVICE="calendar"
-LABEL MAINTAINERS="student@otus.ru"
+RUN apk add --no-cache ca-certificates tzdata \
+    && adduser -D -u 10001 app
 
-ENV BIN_FILE "/opt/calendar/calendar-storer"
-COPY --from=build ${BIN_FILE} ${BIN_FILE}
+COPY --from=build /out/calendar-storer /usr/local/bin/calendar-storer
+COPY configs/storer_config.yaml /etc/calendar/storer_config.yaml
 
-ENV CONFIG_FILE /etc/calendar/storer_config.yaml
-COPY ./configs/storer_config.yaml ${CONFIG_FILE}
+USER app
 
-CMD ${BIN_FILE} -config ${CONFIG_FILE}
+ENTRYPOINT ["/usr/local/bin/calendar-storer"]
+CMD ["-config", "/etc/calendar/storer_config.yaml"]

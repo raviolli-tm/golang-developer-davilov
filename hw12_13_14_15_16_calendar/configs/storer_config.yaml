@@ -12,3 +12,4 @@ broker:
   topic: "${KAFKA_TOPIC:-calendar-command}"
   interval: ${SCHEDULER_INTERVAL:-5}
   group_id: "${KAFKA_GROUP_ID:-calendar-storer}"
+

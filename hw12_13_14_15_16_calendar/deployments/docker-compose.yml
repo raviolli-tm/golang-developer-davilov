@@ -1,145 +1,157 @@
-
-version: '3.9'
+name: calendar
 
 services:
-
   postgres:
-    image: postgres:latest
-    networks:
-      - backend
+    image: postgres:16-alpine
     environment:
-      POSTGRES_HOST_AUTH_METHOD: md5
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres_db
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
-      - ./pgdata:/var/lib/postgresql/data/pgdata
-      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
-      - ../migrations:/docker-entrypoint-initdb.d
-    deploy:
-      resources:
-        limits:
-          cpus: '0.50'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
-    command: >
-      postgres -c max_connections=1000
-               -c shared_buffers=256MB
-               -c effective_cache_size=768MB
-               -c maintenance_work_mem=64MB
-               -c checkpoint_completion_target=0.7
-               -c wal_buffers=16MB
-               -c default_statistics_target=100
-               -c hba_file=/etc/postgresql/pg_hba.conf
+      - pgdata:/var/lib/postgresql/data
+      - ../migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres_user -d postgres_db" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres_db"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    networks:
-      kafka-net:
-        aliases:
-          - zk
+    image: confluentinc/cp-zookeeper:7.9.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     ports:
-      - "2181:2181"
+      - "${ZOOKEEPER_HOST_PORT:-2181}:2181"
+    networks:
+      - kafka-net
 
   kafka:
     image: confluentinc/cp-kafka:7.9.1
     depends_on:
       - zookeeper
-    networks:
-      kafka-net:
-        aliases:
-          - kafka
     ports:
-      - "9092:9092"
-      - "29092:29092"
-    hostname: kafka
+      - "${KAFKA_HOST_PORT:-29092}:29092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zk:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-  kafka-ui:
-    image: provectuslabs/kafka-ui
-    container_name: broker-ui
-    ports:
-      - "8090:8080"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 10s
+      retries: 30
     networks:
-      kafka-net:
-        aliases:
-          - kafkaui
-    restart: always
-    environment:
-      - KAFKA_CLUSTERS_0_NAME=local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=PLAINTEXT://kafka:9092
-      - KAFKA_CLUSTERS_0_ZOOKEEPER=zk:2181
-    links:
-      - kafka
-      - zookeeper
-
-  storer:
-    build:
-      context: ..
-      dockerfile: ./build/Dockerfile-storer
-    networks:
-      - backend
       - kafka-net
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_started
 
   calendar:
     build:
       context: ..
-      dockerfile: ./build/Dockerfile
+      dockerfile: build/Dockerfile
+    environment:
+      HTTP_PORT: 8888
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres_db
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: postgres_password
+      LOG_LEVEL: INFO
     ports:
-      - "8080:8080"
-    networks:
-      - backend
+      - "${CALENDAR_HOST_PORT:-8888}:8888"
+    volumes:
+      - ../configs/config.yaml:/etc/calendar/config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8888/hello-world >/dev/null 2>&1"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend
 
   scheduler:
     build:
       context: ..
-      dockerfile: ./build/Dockerfile-scheduler
-    networks:
-      - backend
-      - kafka-net
+      dockerfile: build/Dockerfile-scheduler
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres_db
+      POSTGRES_USER: postgres_user
+      POSTGRES_PASSWORD: postgres_password
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: calendar-command
+      SCHEDULER_INTERVAL: 2
+    volumes:
+      - ../configs/scheduler_config.yaml:/etc/calendar/scheduler_config.yaml:ro
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
-        condition: service_started
+        condition: service_healthy
+    networks:
+      - backend
+      - kafka-net
 
+  storer:
+    build:
+      context: ..
+      dockerfile: build/Dockerfile-storer
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: postgres_db
+      POSTGRES_USER: notify_user
+      POSTGRES_PASSWORD: notify_password
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC: calendar-command
+      KAFKA_GROUP_ID: calendar-storer
+    volumes:
+      - ../configs/storer_config.yaml:/etc/calendar/storer_config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - backend
+      - kafka-net
 
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    profiles:
+      - tools
+    ports:
+      - "${KAFKA_UI_HOST_PORT:-8090}:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      kafka:
+        condition: service_healthy
+    networks:
+      - kafka-net
 
 volumes:
   pgdata:
     driver: local
 
 networks:
-  kafka-net:
-    driver: bridge
   backend:
     driver: bridge
-
+  kafka-net:
+    driver: bridge
