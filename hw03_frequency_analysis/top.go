@@ -1,65 +1,94 @@
 package hw03frequencyanalysis
 
 import (
-	"regexp"
 	"sort"
 	"strings"
+	"unicode"
 )
 
-var reg = regexp.MustCompile("[а-яА-Я0-9.,!?-]*[а-яА-Я0-9]|-*-]")
-
-type Pair struct {
-	Key   string
-	Value int
-}
-
+// Top returns the top 10 words. When taskWithAsteriskIsCompleted is true the
+// extended rules are used: words are compared case-insensitively and
+// punctuation at the beginning/end of a word is ignored.
 func Top(x string, taskWithAsteriskIsCompleted bool) []string {
-	if !taskWithAsteriskIsCompleted {
-		return Top10(x)
+	if taskWithAsteriskIsCompleted {
+		return Top10Asterisk(x)
 	}
-	return Top10Asterisk(x)
+
+	return Top10(x)
 }
 
-func Top10StringArr(stringsArr []string) []string {
-	if len(stringsArr) == 0 {
+// Top10 returns the 10 most frequent words, treating every whitespace
+// separated token as a word.
+func Top10(x string) []string {
+	return Top10StringArr(strings.Fields(x))
+}
+
+// Top10Asterisk returns the 10 most frequent words using the extended rules.
+func Top10Asterisk(s string) []string {
+	return Top10StringArr(asteriskWords(s))
+}
+
+func asteriskWords(s string) []string {
+	words := make([]string, 0)
+
+	for _, token := range strings.Fields(strings.ToLower(s)) {
+		word := strings.TrimFunc(token, unicode.IsPunct)
+		if word == "" {
+			// A token consisting only of punctuation is still a word
+			// ("-------"), except for a single dash.
+			if token == "-" {
+				continue
+			}
+			word = token
+		}
+		words = append(words, word)
+	}
+
+	return words
+}
+
+// Top10StringArr returns the 10 most frequent values of words. Values with
+// equal frequency are sorted lexicographically.
+func Top10StringArr(words []string) []string {
+	if len(words) == 0 {
 		return []string{}
 	}
 
-	sort.Strings(stringsArr)
-	topFrequencies := make([]Pair, 0)
+	sorted := make([]string, len(words))
+	copy(sorted, words)
+	sort.Strings(sorted)
+
+	type pair struct {
+		key   string
+		count int
+	}
+
+	frequencies := make([]pair, 0, len(sorted))
 	start := 0
 
-	for i := 0; i < len(stringsArr); i++ {
-		if stringsArr[start] != stringsArr[i] {
-			topFrequencies = append(topFrequencies, Pair{stringsArr[start], i - start})
+	for i := 1; i <= len(sorted); i++ {
+		if i == len(sorted) || sorted[i] != sorted[start] {
+			frequencies = append(frequencies, pair{key: sorted[start], count: i - start})
 			start = i
 		}
 	}
-	topFrequencies = append(topFrequencies, Pair{stringsArr[start], len(stringsArr) - start})
 
-	sort.Slice(topFrequencies, func(i, j int) bool {
-		if topFrequencies[i].Value == topFrequencies[j].Value {
-			return topFrequencies[i].Key < topFrequencies[j].Key
+	sort.Slice(frequencies, func(i, j int) bool {
+		if frequencies[i].count == frequencies[j].count {
+			return frequencies[i].key < frequencies[j].key
 		}
-		return topFrequencies[i].Value > topFrequencies[j].Value
+		return frequencies[i].count > frequencies[j].count
 	})
-	var result []string
 
-	for i := 0; i < len(topFrequencies); i++ {
-		result = append(result, topFrequencies[i].Key)
+	limit := len(frequencies)
+	if limit > 10 {
+		limit = 10
 	}
-	return result[:10]
-}
 
-func Top10(x string) []string {
-	stringsArr := strings.Fields(x)
+	result := make([]string, 0, limit)
+	for i := 0; i < limit; i++ {
+		result = append(result, frequencies[i].key)
+	}
 
-	return Top10StringArr(stringsArr)
-}
-
-func Top10Asterisk(s string) []string {
-	s = strings.ToLower(s)
-	stringsArr := reg.FindAllString(s, -1)
-
-	return Top10StringArr(stringsArr)
+	return result
 }
