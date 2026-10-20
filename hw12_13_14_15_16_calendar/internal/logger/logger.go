@@ -29,19 +29,7 @@ type LogConf struct {
 }
 
 func New(loggerConf LogConf) *Logger {
-	intLevel := 0
-	switch loggerConf.Level {
-	case "ERROR":
-		intLevel = 3
-	case "WARN":
-		intLevel = 2
-	case "INFO":
-		intLevel = 1
-	case "DEBUG":
-		intLevel = 0
-	default:
-		intLevel = 0
-	}
+	intLevel := levelValue(loggerConf.Level)
 
 	destinations := make([]io.Writer, 0)
 	if loggerConf.Stdout.Enabled {
@@ -53,66 +41,64 @@ func New(loggerConf LogConf) *Logger {
 	if loggerConf.File.Enabled {
 		for _, destination := range loggerConf.File.Destinations {
 			filePath := destination + "log_" + loggerUniqueDateName + ".log"
-			destinationFile, fileErr := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			destinationFile, fileErr := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 			if fileErr != nil {
 				fmt.Printf("ERROR | Error opening log file: %s \n", filePath)
+				continue
 			}
 			destinations = append(destinations, destinationFile)
 		}
 	}
 
-	log := &Logger{loggerConf.Level, intLevel, destinations}
+	return &Logger{loggerConf.Level, intLevel, destinations}
+}
 
-	return log
+func levelValue(level string) int {
+	switch level {
+	case "ERROR":
+		return 3
+	case "WARN":
+		return 2
+	case "INFO":
+		return 1
+	case "DEBUG":
+		return 0
+	default:
+		return 0
+	}
 }
 
 const dateFormat string = "01-02-2006 15:04:05.000"
-const format string = "%s [%s] %s"
+const format string = "%s [%s] %s \n"
 
 func (l *Logger) Warn(msg string) {
-	currentTime := time.Now().Format(dateFormat)
-	for _, destination := range l.destinations {
-		err(msg, destination, currentTime)
-	}
+	l.log(2, "WARN", msg)
 }
 
 func (l *Logger) Info(msg string) {
-	currentTime := time.Now().Format(dateFormat)
-	for _, destination := range l.destinations {
-		info(msg, destination, currentTime)
-	}
+	l.log(1, "INFO", msg)
 }
 
 func (l *Logger) Debug(msg string) {
-	currentTime := time.Now().Format(dateFormat)
-	for _, destination := range l.destinations {
-		debug(msg, destination, currentTime)
-	}
+	l.log(0, "DEBUG", msg)
 }
 
 func (l *Logger) Error(msg string) {
+	l.log(3, "ERROR", msg)
+}
+
+func (l *Logger) log(level int, tag, msg string) {
+	if level < l.intLevel {
+		return
+	}
+
 	currentTime := time.Now().Format(dateFormat)
 	for _, destination := range l.destinations {
-		err(msg, destination, currentTime)
+		logMsg(msg, destination, currentTime, tag)
 	}
 }
 
-func warn(msg string, destination io.Writer, time string) {
-	logMsg(msg, destination, time, "WARN")
-}
-
-func info(msg string, destination io.Writer, time string) {
-	logMsg(msg, destination, time, "INFO")
-}
-
-func debug(msg string, destination io.Writer, time string) {
-	logMsg(msg, destination, time, "DEBUG")
-}
-
-func err(msg string, destination io.Writer, time string) {
-	logMsg(msg, destination, time, "ERROR")
-}
-func logMsg(msg string, destination io.Writer, time string, logLevel string) {
+func logMsg(msg string, destination io.Writer, time, logLevel string) {
 	_, err := destination.Write([]byte(fmt.Sprintf(format, time, logLevel, msg)))
 	if err != nil {
 		return

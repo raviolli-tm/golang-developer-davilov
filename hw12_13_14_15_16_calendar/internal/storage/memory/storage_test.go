@@ -1,175 +1,82 @@
 package memorystorage
 
 import (
-	"fmt"
+	"context"
+	"errors"
+	"testing"
+	"time"
+
 	"github.com/davilov/hw12_13_14_15_calendar/appErrors"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
-func TestStorage(t *testing.T) {
-	calendar := New()
-
-	tests := []struct {
-		operation int
-		input     storage.Event
-		expected  []storage.Event
-		err       error
-	}{
-		{operation: 0, input: storage.Event{
-			Title:           "test title",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}},
-		{operation: 1, expected: []storage.Event{{
-			Title:           "test title",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}}},
-		{operation: 3, input: storage.Event{
-			Title:           "test title(updated)",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description(updated)",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}},
-		{operation: 1, expected: []storage.Event{{
-			Title:           "test title(updated)",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description(updated)",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}}},
-		{operation: 2, err: appErrors.ErrIdDoesNotExist},
-		{operation: 1, expected: []storage.Event{}},
-		{operation: 0, input: storage.Event{
-			Title:           "test title",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}},
-		{operation: 0, input: storage.Event{
-			Title:           "test title 2",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description 2",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}},
-		{operation: 1, expected: []storage.Event{{
-			Title:           "test title",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}, {
-			Title:           "test title 2",
-			DateStart:       time.Now(),
-			DateEnd:         time.Now().Add(15 * time.Minute),
-			Description:     "test description 2",
-			UserId:          1,
-			EventNotifyTime: 15,
-		}}},
-	}
-
-	var id uuid.UUID
-	for testId, ts := range tests {
-		switch ts.operation {
-		case 0:
-			{
-				err := calendar.CreateEvent(ts.input)
-				require.NoError(t, err)
-
-			}
-		case 2:
-			{
-				err := calendar.DeleteEvent(id)
-				require.NoError(t, err)
-			}
-		case 3:
-			{
-				err := calendar.UpdateEvent(id, ts.input)
-				require.NoError(t, err)
-			}
-		case 1:
-			{
-				events, err := calendar.ReadEvents()
-				require.NoError(t, err)
-				require.Equal(t, len(ts.expected), len(events))
-				if len(events) > 0 {
-					id = events[0].ID
-				}
-				for _, eventExpected := range ts.expected {
-					for _, event := range events {
-						if eventExpected.Title == event.Title {
-							require.Equal(t, eventExpected.Title, event.Title)
-							require.Equal(t, eventExpected.Description, event.Description)
-							require.Equal(t, eventExpected.UserId, event.UserId)
-						}
-					}
-				}
-
-			}
-
-		}
-		fmt.Printf("Test %d passed\n", testId)
-
+func validEvent() storage.Event {
+	return storage.Event{
+		Title:           "test title",
+		DateStart:       time.Now(),
+		DateEnd:         time.Now().Add(15 * time.Minute),
+		Description:     "test description",
+		UserId:          1,
+		EventNotifyTime: 15,
 	}
 }
 
-func TestStorageErr(t *testing.T) {
-	calendar := New()
+func TestStorageCRUD(t *testing.T) {
+	store := New()
+	ctx := context.Background()
 
-	tests := []struct {
-		operation int
-		err       error
-	}{
-		{operation: 2, err: appErrors.ErrIdDoesNotExist},
-		{operation: 3, err: appErrors.ErrIdDoesNotExist},
-	}
+	created, err := store.CreateEvent(validEvent(), ctx)
+	require.NoError(t, err)
+	require.NotEqual(t, uuid.Nil, created.ID)
 
-	for testId, ts := range tests {
-		switch ts.operation {
-		case 0:
-			{
-			}
-		case 1:
-			{
-			}
-		case 2:
-			{
-				err := calendar.DeleteEvent(uuid.New())
-				require.ErrorIs(t, err, ts.err)
-			}
+	events, err := store.ReadEvents(ctx)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	require.Equal(t, created.ID, events[0].ID)
 
-		case 3:
-			{
-				err := calendar.UpdateEvent(uuid.New(), storage.Event{
-					Title:           "test title",
-					DateStart:       time.Now(),
-					DateEnd:         time.Now().Add(15 * time.Minute),
-					Description:     "test description",
-					UserId:          1,
-					EventNotifyTime: 15,
-				})
-				require.ErrorIs(t, err, ts.err)
-			}
+	updated, err := store.UpdateEvent(created.ID, storage.Event{
+		Title:           "updated title",
+		DateStart:       time.Now(),
+		DateEnd:         time.Now().Add(time.Hour),
+		Description:     "updated description",
+		UserId:          2,
+		EventNotifyTime: 5,
+	}, ctx)
+	require.NoError(t, err)
+	require.Equal(t, "updated title", updated.Title)
 
-		}
-		fmt.Printf("Test %d passed\n", testId)
-	}
+	events, err = store.ReadEvents(ctx)
+	require.NoError(t, err)
+	require.Len(t, events, 1)
+	require.Equal(t, "updated title", events[0].Title)
+
+	deletedID, err := store.DeleteEvent(created.ID, ctx)
+	require.NoError(t, err)
+	require.Equal(t, created.ID, deletedID)
+
+	events, err = store.ReadEvents(ctx)
+	require.NoError(t, err)
+	require.Empty(t, events)
+}
+
+func TestStorageErrors(t *testing.T) {
+	store := New()
+	ctx := context.Background()
+
+	t.Run("update missing event", func(t *testing.T) {
+		_, err := store.UpdateEvent(uuid.New(), validEvent(), ctx)
+		require.ErrorIs(t, err, appErrors.ErrIdDoesNotExist)
+	})
+
+	t.Run("delete missing event", func(t *testing.T) {
+		_, err := store.DeleteEvent(uuid.New(), ctx)
+		require.ErrorIs(t, err, appErrors.ErrIdDoesNotExist)
+	})
+
+	t.Run("validation error", func(t *testing.T) {
+		_, err := store.CreateEvent(storage.Event{}, ctx)
+		require.True(t, errors.Is(err, appErrors.ErrValidation))
+	})
 }

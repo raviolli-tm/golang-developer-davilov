@@ -4,7 +4,6 @@ go 1.23.10
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/stretchr/testify v1.10.0
 	gopkg.in/yaml.v3 v3.0.1

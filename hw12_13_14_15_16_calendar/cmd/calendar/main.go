@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"flag"
-	memorystorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/memory"
-	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
+	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +13,8 @@ import (
 	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/logger"
 	internalhttp "github.com/davilov/hw12_13_14_15_calendar/internal/server/http"
+	memorystorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/memory"
+	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
 )
 
 var configFile string
@@ -29,42 +31,61 @@ func main() {
 		return
 	}
 
-	config := NewConfig()
-	logg := logger.New(config.Logger)
-	var storage app.Storage
-	switch config.StorageType {
-	case "postgres":
-		storage = sqlstorage.New(config.Database)
-	case "in-memory":
-		storage = memorystorage.New()
-	default:
-		storage = memorystorage.New()
+	if err := run(); err != nil {
+		log.Printf("calendar stopped with error: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
+	config, err := NewConfig()
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
 	}
 
-	calendar := app.New(logg, storage)
-
-	server := internalhttp.NewServer(logg, calendar)
+	logg := logger.New(config.Logger)
 
 	ctx, cancel := signal.NotifyContext(context.Background(),
 		syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 	defer cancel()
 
-	go func() {
-		<-ctx.Done()
+	storage, err := newStorage(config, ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer closeCancel()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-		defer cancel()
-
-		if err := server.Stop(ctx); err != nil {
-			logg.Error("failed to stop http server: " + err.Error())
+		if err := storage.Close(closeCtx); err != nil {
+			logg.Error("failed to close storage: " + err.Error())
 		}
 	}()
+
+	calendar := app.New(logg, storage)
+	server := internalhttp.NewServer(logg, calendar, config.HTTPAddr())
 
 	logg.Info("calendar is running...")
 
 	if err := server.Start(ctx); err != nil {
-		logg.Error("failed to start http server: " + err.Error())
-		cancel()
-		os.Exit(1) //nolint:gocritic
+		return fmt.Errorf("start http server: %w", err)
+	}
+
+	return nil
+}
+
+func newStorage(config Config, ctx context.Context) (app.Storage, error) {
+	switch config.StorageType {
+	case "postgres":
+		storage, err := sqlstorage.New(config.Database, ctx)
+		if err != nil {
+			return nil, fmt.Errorf("connect to postgres: %w", err)
+		}
+
+		return storage.NewEventStorage(), nil
+	case "in-memory":
+		return memorystorage.New(), nil
+	default:
+		return nil, fmt.Errorf("unknown storage type %q", config.StorageType)
 	}
 }

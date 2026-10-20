@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/davilov/hw12_13_14_15_calendar/internal/storage"
-	"github.com/google/uuid"
+	"time"
+
 	_ "github.com/jackc/pgx/stdlib"
-	"log"
-	"sync"
 )
 
 type DatabaseConf struct {
@@ -18,188 +16,78 @@ type DatabaseConf struct {
 	Password string `yaml:"password"`
 	Database string `yaml:"database"`
 	Schema   string `yaml:"schema"`
+	SSLMode  string `yaml:"sslmode"`
 }
 
 type Storage struct {
 	db     *sql.DB
-	mu     sync.Mutex
 	config DatabaseConf
-	ctx    context.Context
 }
 
-func New(conf DatabaseConf) *Storage {
-	return &Storage{config: conf, mu: sync.Mutex{}}
+// New connects to the database and returns a ready-to-use storage.
+func New(conf DatabaseConf, ctx context.Context) (*Storage, error) {
+	strg := &Storage{config: conf}
+
+	if err := strg.Connect(ctx); err != nil {
+		return nil, err
+	}
+
+	return strg, nil
 }
 
 func (s *Storage) Connect(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.db != nil {
 		return nil
 	}
 
-	var err error
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s currentSchema=%s",
+	sslMode := s.config.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+
+	dsn := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
 		s.config.Host,
 		s.config.Port,
 		s.config.Username,
 		s.config.Password,
 		s.config.Database,
-		s.config.Schema)
-	s.db, err = sql.Open("pgx", dsn) // *sql.DB
+		sslMode,
+	)
+
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return fmt.Errorf("failed to load driver: %w", err)
 	}
 
-	err = s.db.PingContext(ctx)
-	if err != nil {
-		_ = s.db.Close()
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
+	pingCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(pingCtx); err != nil {
+		_ = db.Close()
 		return fmt.Errorf("failed to connect to db: %w", err)
 	}
-	s.ctx = ctx
+
+	s.db = db
+
 	return nil
 }
 
-func (s *Storage) Close(ctx context.Context) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func (s *Storage) Close(_ context.Context) error {
 	if s.db == nil {
 		return nil
 	}
 
-	done := make(chan error, 1)
+	err := s.db.Close()
+	s.db = nil
 
-	go func() {
-		done <- s.db.Close()
-	}()
-
-	select {
-	case err := <-done:
-		s.db = nil
-		if err != nil {
-			return fmt.Errorf("failed to close db: %w", err)
-		}
-		return nil
-
-	case <-ctx.Done():
-		return fmt.Errorf("context canceled: %w", ctx.Err())
-
-	}
-}
-
-func (s *Storage) CreateEvent(e storage.Event) error {
-
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
 	if err != nil {
-		log.Fatal(err)
-	}
-	defer tx.Rollback()
-
-	query := `INSERT INTO calendar.calendar_event (title, date_start, date_end, event_description, user_id, event_notify_time) VALUES ($1, $2, $3, $4, $5, $6)`
-	_, err = tx.ExecContext(s.ctx, query,
-		e.Title,
-		e.DateStart,
-		e.DateEnd,
-		e.Description,
-		e.UserId,
-		e.EventNotifyTime)
-	if err != nil {
-		return fmt.Errorf("failed to create event: %w", err)
+		return fmt.Errorf("failed to close db: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		err = fmt.Errorf("failed to commit transaction: %w", err)
-	}
-	return nil
-}
-func (s *Storage) ReadEvents() ([]storage.Event, error) {
-
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer tx.Rollback()
-
-	query := `select event_id, title, date_start, date_end, event_description, user_id, event_notify_time from calendar.calendar_event`
-
-	rows, err := tx.QueryContext(s.ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read events: %w", err)
-	}
-	defer rows.Close()
-
-	err = tx.Commit() // или tx.Rollback()
-	if err != nil {
-		err = fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	result := make([]storage.Event, 0)
-	for rows.Next() {
-		event := storage.Event{}
-		if err := rows.Scan(&event.ID,
-			&event.Title,
-			&event.DateStart,
-			&event.DateEnd,
-			&event.Description,
-			&event.UserId,
-			&event.EventNotifyTime); err != nil {
-			continue
-		}
-		result = append(result, event)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read events: %w", err)
-	}
-	return result, nil
-}
-func (s *Storage) UpdateEvent(id uuid.UUID, e storage.Event) error {
-
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer tx.Rollback()
-
-	query := `update calendar.calendar_event set title = $1, date_start = $2, date_end = $3, event_description = $4, user_id = $5, event_notify_time = $6 where event_id = $7`
-	_, err = tx.ExecContext(s.ctx, query,
-		e.Title,
-		e.DateStart,
-		e.DateEnd,
-		e.Description,
-		e.UserId,
-		e.EventNotifyTime,
-		id.String())
-	if err != nil {
-		return fmt.Errorf("failed to update event: %w", err)
-	}
-
-	err = tx.Commit() // или tx.Rollback()
-	if err != nil {
-		err = fmt.Errorf("failed to commit transaction: %w", err)
-	}
-
-	return nil
-
-}
-func (s *Storage) DeleteEvent(id uuid.UUID) error {
-	tx, err := s.db.BeginTx(s.ctx, nil) // *sql.Tx
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer tx.Rollback()
-
-	query := `delete from calendar.calendar_event where event_id = $1`
-	_, err = tx.ExecContext(s.ctx, query,
-		id.String())
-	if err != nil {
-		return fmt.Errorf("failed to delete event: %w", err)
-	}
-	err = tx.Commit() // или tx.Rollback()
-	if err != nil {
-		err = fmt.Errorf("failed to commit transaction: %w", err)
-	}
 	return nil
 }

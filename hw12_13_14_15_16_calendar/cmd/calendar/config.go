@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/davilov/hw12_13_14_15_calendar/internal/config"
 	"github.com/davilov/hw12_13_14_15_calendar/internal/logger"
 	sqlstorage "github.com/davilov/hw12_13_14_15_calendar/internal/storage/sql"
-	"gopkg.in/yaml.v3"
-	"os"
 )
 
 // При желании конфигурацию можно вынести в internal/config.
@@ -15,29 +15,24 @@ type Config struct {
 	Logger      logger.LogConf          `yaml:"logger"`
 	Database    sqlstorage.DatabaseConf `yaml:"postgres"`
 	StorageType string                  `yaml:"storage_type"`
-	// TODO
+	HTTP        HTTPConf                `yaml:"http"`
 }
 
-func NewConfig() Config {
-	_, err := os.Stat(configFile)
-	if err != nil {
-		fmt.Println("Error: File does not exist")
-		os.Exit(1)
-	}
-	file, err := os.ReadFile(configFile)
-	if err != nil {
-		fmt.Println("Error: File could not be read")
-		os.Exit(1)
-	}
+type HTTPConf struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+}
 
+func NewConfig() (Config, error) {
 	cnf := Config{}
-	err = yaml.Unmarshal(file, &cnf)
-	if err != nil {
-		fmt.Println("Error: File could not be parsed")
-		os.Exit(1)
+
+	if err := config.Load(configFile, &cnf); err != nil {
+		return Config{}, err
 	}
 
-	return cnf
+	return cnf, nil
 }
 
-// TODO
+func (c Config) HTTPAddr() string {
+	return fmt.Sprintf("%s:%d", c.HTTP.Host, c.HTTP.Port)
+}

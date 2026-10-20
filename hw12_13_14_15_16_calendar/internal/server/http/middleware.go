@@ -2,8 +2,11 @@ package internalhttp
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"time"
+
+	"github.com/davilov/hw12_13_14_15_calendar/internal/app"
 )
 
 type loggingResponseWriter struct {
@@ -16,37 +19,40 @@ func (lrw *loggingResponseWriter) WriteHeader(code int) {
 	lrw.ResponseWriter.WriteHeader(code)
 }
 
-func loggingMiddleware(next http.Handler, logger Logger) http.HandlerFunc { //nolint:unused
-	return func(w http.ResponseWriter, r *http.Request) {
+func (lrw *loggingResponseWriter) Write(data []byte) (int, error) {
+	return lrw.ResponseWriter.Write(data)
+}
 
+func loggingMiddleware(next http.Handler, logger app.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		lrw := &loggingResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 
 		startTime := time.Now()
 		next.ServeHTTP(lrw, r)
-		duration := startTime.Sub(time.Now()).Milliseconds()
-		statusCode := lrw.statusCode
+		duration := time.Since(startTime)
 
-		if statusCode >= 200 && statusCode <= 299 {
-			logger.Info(
-				fmt.Sprintf("%s [%s] %s %s %s %d %dms",
-					r.RemoteAddr,
-					time.Now().Format(time.RFC3339),
-					r.Method,
-					r.URL.Path,
-					r.Proto,
-					statusCode,
-					duration))
-
-		} else {
-			logger.Info(
-				fmt.Sprintf("%s [%s] %s %s %s %d %dms",
-					r.RemoteAddr,
-					time.Now().Format(time.RFC3339),
-					r.Method,
-					r.URL.Path,
-					r.Proto,
-					statusCode,
-					duration))
+		clientIP := r.RemoteAddr
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			clientIP = host
 		}
+
+		message := fmt.Sprintf(
+			`%s [%s] "%s %s %s" %d %s %q`,
+			clientIP,
+			startTime.Format("02/Jan/2006:15:04:05 -0700"),
+			r.Method,
+			r.URL.RequestURI(),
+			r.Proto,
+			lrw.statusCode,
+			duration.Round(time.Microsecond),
+			r.UserAgent(),
+		)
+
+		if lrw.statusCode >= http.StatusInternalServerError {
+			logger.Error(message)
+			return
+		}
+
+		logger.Info(message)
 	}
 }
