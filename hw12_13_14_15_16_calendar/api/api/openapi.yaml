@@ -1,0 +1,290 @@
+openapi: 3.0.4
+info:
+  description: This is a sample Calendar Server based on the OpenAPI 3.0 specification.
+  title: Swagger Calendar - OpenAPI 3.0
+  version: 1.0.12
+externalDocs:
+  description: About calendar server
+  url: https://github.com/raviolli-tm/golang-developer-davilov
+servers:
+- url: localhost:8888
+tags:
+- description: Basic calendar operations
+  externalDocs:
+    description: Find out more
+    url: https://github.com/raviolli-tm/golang-developer-davilov
+  name: Calendar Events
+paths:
+  /calendar:
+    get:
+      description: Get all calendar events
+      operationId: GetCalendarEvents
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+          description: Successful operation
+        "422":
+          description: Validation exception
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Get all calendar events
+      tags:
+      - Calendar Events
+    post:
+      description: Add a calendar event to calendar.
+      operationId: AddCalendarEvent
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Event"
+        description: Add a calendar event to calendar
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+          description: Successful operation
+        "400":
+          description: Invalid input
+        "422":
+          description: Validation exception
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Add a calendar event to calendar.
+      tags:
+      - Calendar Events
+  /calendar/day:
+    get:
+      description: Get calendar events whose start time belongs to the day that contains the given date.
+      operationId: GetCalendarEventsByDay
+      parameters:
+      - description: Day in YYYY-MM-DD format, defaults to today
+        in: query
+        name: date
+        required: false
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+          description: Successful operation
+        "422":
+          description: Invalid date
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Get calendar events for a day
+      tags:
+      - Calendar Events
+  /calendar/week:
+    get:
+      description: Get calendar events whose start time belongs to the week (Monday-Sunday) that contains the given date.
+      operationId: GetCalendarEventsByWeek
+      parameters:
+      - description: Any day of the week in YYYY-MM-DD format, defaults to today
+        in: query
+        name: date
+        required: false
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+          description: Successful operation
+        "422":
+          description: Invalid date
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Get calendar events for a week
+      tags:
+      - Calendar Events
+  /calendar/month:
+    get:
+      description: Get calendar events whose start time belongs to the month that contains the given date.
+      operationId: GetCalendarEventsByMonth
+      parameters:
+      - description: Any day of the month in YYYY-MM-DD format, defaults to today
+        in: query
+        name: date
+        required: false
+        schema:
+          format: date
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Event"
+          description: Successful operation
+        "422":
+          description: Invalid date
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Get calendar events for a month
+      tags:
+      - Calendar Events
+  /calendar/{CalendarEventId}:
+    delete:
+      description: Delete Calendar Event by id.
+      operationId: DeleteCalendarEventById
+      parameters:
+      - description: Calendar Event id to delete
+        explode: false
+        in: path
+        name: CalendarEventId
+        required: true
+        schema:
+          format: uuid
+          type: string
+          x-go-type: github.com/google/uuid.UUID
+        style: simple
+      responses:
+        "200":
+          description: Calendar Event deleted
+        "404":
+          description: Calendar Event not found
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Delete Calendar Event by id.
+      tags:
+      - Calendar Events
+    put:
+      description: Update Calendar Event by Id
+      operationId: UpdateCalendarEventById
+      parameters:
+      - description: Calendar Event Id to update
+        explode: false
+        in: path
+        name: CalendarEventId
+        required: true
+        schema:
+          format: uuid
+          type: string
+          x-go-type: github.com/google/uuid.UUID
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Event"
+        description: Updated event's data
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Event"
+          description: successful operation
+        "400":
+          description: Invalid ID supplied
+        "404":
+          description: Calendar Event not found
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Unexpected error
+      summary: Update Calendar Event by Id.
+      tags:
+      - Calendar Events
+components:
+  schemas:
+    Event:
+      example:
+        date_start: 2000-01-23T04:56:07.000+00:00
+        event_id: 550e8400-e29b-41d4-a716-446655440000
+        user_id: 123456
+        event_notify_time: 15
+        description: Стартовая встреча для делового совещания
+        date_end: 2000-01-23T04:56:07.000+00:00
+        title: Стартовая встреча
+      format: event
+      properties:
+        event_id:
+          example: 550e8400-e29b-41d4-a716-446655440000
+          format: uuid
+          type: string
+        title:
+          example: Стартовая встреча
+          type: string
+        date_start:
+          format: date-time
+          type: string
+        date_end:
+          format: date-time
+          type: string
+        description:
+          example: Стартовая встреча для делового совещания
+          type: string
+        user_id:
+          example: 123456
+          format: int32
+          type: integer
+        event_notify_time:
+          example: 15
+          format: int32
+          type: integer
+      x-go-type:
+        type: storage.Event
+        import: github.com/davilov/hw12_13_14_15_calendar/internal/storage
+    Error:
+      example:
+        code: code
+        message: message
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+      required:
+      - code
+      - message
+      type: object

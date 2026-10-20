@@ -71,7 +71,7 @@ func (a *App) UpdateEvent(ctx context.Context, id uuid.UUID, event storage.Event
 }
 
 func (a *App) DeleteEvent(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	id, err := a.storage.DeleteEvent(id, ctx)
+	_, err := a.storage.DeleteEvent(id, ctx)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("delete event: %w", err)
 	}
