@@ -1,6 +1,7 @@
 package hw06pipelineexecution
 
 import (
+	"runtime"
 	"strconv"
 	"testing"
 	"time"
@@ -65,9 +66,9 @@ func TestPipeline(t *testing.T) {
 		in := make(Bi)
 		done := make(Bi)
 		data := []int{1, 2, 3, 4, 5}
-
 		// Abort after 200ms
 		abortDur := sleepPerStage * 2
+		runtime.GOMAXPROCS(1)
 		go func() {
 			<-time.After(abortDur)
 			close(done)
