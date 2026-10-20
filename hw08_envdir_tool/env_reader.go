@@ -1,57 +1,77 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"unicode"
 )
 
 type Environment map[string]EnvValue
 
+// EnvValue helps to distinguish between empty files and files with the first empty line.
 type EnvValue struct {
 	Value      string
 	NeedRemove bool
 }
 
+// ReadDir reads a specified directory and returns map of env variables.
+// Variables represented as files where filename is name of variable, file first line is a value.
 func ReadDir(dir string) (Environment, error) {
-	dirInfo, err := os.ReadDir(dir)
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read dir %q: %w", dir, err)
 	}
 
-	envVars := make(Environment)
+	env := make(Environment)
 
-	for _, fileInfo := range dirInfo {
-		file, err := os.Open(
-			filepath.Join(dir, fileInfo.Name()))
-		if err != nil {
-			return nil, fmt.Errorf("error opening file %s : %w", fileInfo.Name(), err)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
 		}
 
-		fileEnv := EnvValue{"", false}
-		all, err := io.ReadAll(file)
+		name := entry.Name()
+		if strings.ContainsRune(name, '=') {
+			continue
+		}
+
+		value, needRemove, err := readEnvFile(filepath.Join(dir, name))
 		if err != nil {
 			return nil, err
 		}
-		if len(all) == 0 {
-			fileEnv.NeedRemove = true
-		} else {
-			newLineIdx := bytes.IndexRune(all, '\n')
-			if newLineIdx != -1 {
-				all = all[:newLineIdx]
-			}
-			all = bytes.ReplaceAll(all, []byte{0}, []byte{10})
-			fileEnv.Value = string(all)
-			fileEnv.Value = strings.TrimRightFunc(fileEnv.Value, unicode.IsSpace)
-		}
 
-		envVars[fileInfo.Name()] = fileEnv
-		_ = file.Close()
+		env[name] = EnvValue{Value: value, NeedRemove: needRemove}
 	}
 
-	return envVars, nil
+	return env, nil
+}
+
+func readEnvFile(path string) (string, bool, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", false, fmt.Errorf("open env file %q: %w", path, err)
+	}
+	defer file.Close()
+
+	info, err := file.Stat()
+	if err != nil {
+		return "", false, fmt.Errorf("stat env file %q: %w", path, err)
+	}
+	if info.Size() == 0 {
+		return "", true, nil
+	}
+
+	line, err := bufio.NewReader(file).ReadBytes('\n')
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", false, fmt.Errorf("read env file %q: %w", path, err)
+	}
+
+	line = bytes.TrimSuffix(line, []byte{'\n'})
+	line = bytes.ReplaceAll(line, []byte{0}, []byte{'\n'})
+
+	return strings.TrimRight(string(line), " \t"), false, nil
 }

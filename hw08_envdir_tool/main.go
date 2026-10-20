@@ -6,16 +6,16 @@ import (
 )
 
 func main() {
-	envPath := os.Args[1]
-
-	cmd := make([]string, 0)
-
-	cmd = append(cmd, os.Args[2:]...)
-
-	env, err := ReadDir(envPath)
-	if err != nil {
-		fmt.Println(err)
-		return
+	if len(os.Args) < 3 {
+		fmt.Fprintln(os.Stderr, "usage: go-envdir <dir> <command> [args...]")
+		os.Exit(2)
 	}
-	RunCmd(cmd, env)
+
+	env, err := ReadDir(os.Args[1])
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
+	os.Exit(RunCmd(os.Args[2:], env))
 }
