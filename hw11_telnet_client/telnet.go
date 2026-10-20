@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -33,53 +34,71 @@ func (s *TelnetClientImpl) Connect() error {
 	if s.conn != nil {
 		return nil
 	}
-	dial, err := net.DialTimeout("tcp", s.address, s.timeout)
+
+	conn, err := net.DialTimeout("tcp", s.address, s.timeout)
 	if err != nil {
-		return err
+		return fmt.Errorf("connect to %s: %w", s.address, err)
 	}
-	s.conn = dial
-	s.tcpIn = bufio.NewReader(s.conn)
-	s.tcpOut = bufio.NewWriter(s.conn)
+
+	s.conn = conn
+	s.tcpIn = bufio.NewReader(conn)
+	s.tcpOut = bufio.NewWriter(conn)
 
 	return nil
 }
 
 func (s *TelnetClientImpl) Close() error {
-	err := s.conn.Close()
-	if err != nil {
-		return err
+	var result error
+
+	if s.conn != nil {
+		if err := s.conn.Close(); err != nil {
+			result = err
+		}
+		s.conn = nil
 	}
-	err = s.in.Close()
-	if err != nil {
-		return err
+
+	if s.in != nil {
+		if err := s.in.Close(); err != nil && result == nil {
+			result = err
+		}
 	}
-	s.conn = nil
+
 	s.tcpIn = nil
 	s.tcpOut = nil
-	return nil
+
+	return result
 }
 
 func (s *TelnetClientImpl) Send() error {
-	if s.conn == nil {
-		return fmt.Errorf("no connection")
+	if s.conn == nil || s.tcpOut == nil {
+		return errors.New("no connection")
 	}
 	if s.in == nil {
-		return fmt.Errorf("input stream is not set")
+		return errors.New("input stream is not set")
 	}
-	_, err := io.Copy(s.tcpOut, s.in)
-	if err != nil {
-		return err
+
+	if _, err := io.Copy(s.tcpOut, s.in); err != nil {
+		return fmt.Errorf("send data: %w", err)
 	}
-	return s.tcpOut.Flush()
+
+	if err := s.tcpOut.Flush(); err != nil {
+		return fmt.Errorf("flush data: %w", err)
+	}
+
+	return nil
 }
 
 func (s *TelnetClientImpl) Receive() error {
-	if s.conn == nil {
-		return fmt.Errorf("no connection")
+	if s.conn == nil || s.tcpIn == nil {
+		return errors.New("no connection")
 	}
 	if s.out == nil {
-		return fmt.Errorf("output stream is not set")
+		return errors.New("output stream is not set")
 	}
-	_, err := io.Copy(s.out, s.tcpIn)
-	return err
+
+	if _, err := io.Copy(s.out, s.tcpIn); err != nil {
+		return fmt.Errorf("receive data: %w", err)
+	}
+
+	return nil
 }

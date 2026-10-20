@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,51 +15,69 @@ import (
 var timeout time.Duration
 
 func init() {
-	flag.DurationVar(&timeout, "timeout", time.Second*10, "timeout")
+	flag.DurationVar(&timeout, "timeout", 10*time.Second, "connection timeout")
+}
+
+type result struct {
+	operation string
+	err       error
 }
 
 func main() {
 	flag.Parse()
 
 	if len(flag.Args()) != 2 {
-		log.Fatal("Usage: go run main.go --timeout=<timeout> <host> <port>")
+		fmt.Fprintln(os.Stderr, "usage: go-telnet [--timeout=10s] <host> <port>")
+		os.Exit(2)
 	}
 
-	host := flag.Arg(0)
-	port := flag.Arg(1)
-
-	ctx, _ := signal.NotifyContext(context.Background(), os.Interrupt, os.Kill, syscall.SIGINT)
-	ctx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-
-	client := NewTelnetClient(fmt.Sprintf("%s:%s", host, port), timeout, os.Stdin, os.Stdout)
-
-	err := client.Connect()
-	if err != nil {
-		log.Printf("Unable to connect by tcp, %v", err)
-		return
+	if err := run(); err != nil {
+		log.Printf("go-telnet stopped with error: %v", err)
+		os.Exit(1)
 	}
+}
 
-	go func() {
-		err := client.Receive()
-		if err != nil {
-			log.Printf("Unable to receive from tcp, %v \n", err)
+func run() error {
+	host, port := flag.Arg(0), flag.Arg(1)
+	address := net.JoinHostPort(host, port)
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	client := NewTelnetClient(address, timeout, os.Stdin, os.Stdout)
+	if err := client.Connect(); err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+	defer func() {
+		if err := client.Close(); err != nil {
+			log.Printf("unable to close connection: %v", err)
 		}
 	}()
 
-	for {
-		select {
-		case <-ctx.Done():
-			err := client.Close()
-			if err != nil {
-				log.Printf("Unable to close tcp connection, %v", err)
-				return
-			}
+	log.Printf("...Connected to %s", address)
+
+	results := make(chan result, 2)
+
+	go func() {
+		results <- result{operation: "send", err: client.Send()}
+	}()
+	go func() {
+		results <- result{operation: "receive", err: client.Receive()}
+	}()
+
+	select {
+	case <-ctx.Done():
+		log.Println("...Interrupted")
+	case res := <-results:
+		switch {
+		case res.err != nil:
+			log.Printf("...%s error: %v", res.operation, res.err)
+		case res.operation == "send":
+			log.Println("...EOF")
 		default:
-			err = client.Send()
-			if err != nil {
-				cancel()
-			}
+			log.Println("...Connection was closed by peer")
 		}
 	}
+
+	return nil
 }

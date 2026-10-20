@@ -3,7 +3,27 @@ set -xeuo pipefail
 
 go build -o go-telnet
 
-(echo -e "Hello\nFrom\nNC\n" && cat 2>/dev/null) | nc -l localhost 4242 >/tmp/nc.out &
+python3 - >/tmp/nc.out <<'PY' &
+import socket
+import sys
+
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(("127.0.0.1", 4242))
+server.listen(1)
+
+conn, _ = server.accept()
+conn.sendall(b"Hello\nFrom\nNC\n")
+
+data = b""
+while True:
+    chunk = conn.recv(4096)
+    if not chunk:
+        break
+    data += chunk
+
+sys.stdout.buffer.write(data)
+PY
 NC_PID=$!
 
 sleep 1
@@ -13,6 +33,8 @@ TL_PID=$!
 sleep 5
 kill ${TL_PID} 2>/dev/null || true
 kill ${NC_PID} 2>/dev/null || true
+wait ${TL_PID} 2>/dev/null || true
+wait ${NC_PID} 2>/dev/null || true
 
 function fileEquals() {
   local fileData
